@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  --font-display: "Fraunces", "Iowan Old Style", Palatino, Georgia, serif;
+
+  --color-chamber: #071014;
+  --color-panel: #10181c;
+  --color-raised: #182228;
+  --color-line: #2c3c3a;
+  --color-mist: #e4efe9;
+  --color-fog: #8b9c96;
+  --color-brass: #d9a441;
+  --color-ion: #5ec4bc;
+  --color-stone: #b7c0c4;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--color-chamber);
+    color: var(--color-mist);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-family: var(--font-sans);
+    background:
+      radial-gradient(1100px 420px at 70% -10%, #142228 0%, transparent 60%),
+      var(--color-chamber);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+    font-weight: 560;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  ::selection {
+    background: var(--color-brass);
+    color: var(--color-chamber);
+  }
+}
+
+@layer components {
+  .btn {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-raised);
+    padding: 0.5rem 0.9rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--color-mist);
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease,
+      color 160ms ease,
+      filter 160ms ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    border-color: var(--color-fog);
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--color-brass);
+    outline-offset: 2px;
+  }
+
+  .btn:disabled {
+    opacity: 0.38;
+  }
+
+  .btn-brass {
+    background: var(--color-brass);
+    border-color: var(--color-brass);
+    color: var(--color-chamber);
+  }
+
+  .btn-brass:hover:not(:disabled) {
+    border-color: var(--color-brass);
+    filter: brightness(1.06);
+  }
+
+  .btn-quiet {
+    background: transparent;
+  }
+
+  .btn-icon {
+    width: 2.75rem;
+    padding: 0;
+  }
+
+  .pill[aria-pressed="true"] {
+    border-color: var(--color-brass);
+    color: var(--color-brass);
+  }
+
+  .spectrum-window {
+    background: linear-gradient(
+      90deg,
+      #6a4ad4 0%,
+      #3c63e8 18%,
+      #3ec8c2 38%,
+      #b6d454 58%,
+      #e2b14a 76%,
+      #d45448 100%
+    );
+  }
+}
+
+@keyframes orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.orbit {
+  animation-name: orbit;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit {
+    animation: none !important;
+  }
+
+  .btn {
+    transition: none;
+  }
+}

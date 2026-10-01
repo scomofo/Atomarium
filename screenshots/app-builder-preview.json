@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Atomarium",
+      "hasCanvas": false,
+      "bodyTextLen": 934,
+      "bodyTextHash": "b1c655f6e75aa29013287a2dec8a14da22bb7eae94f421be6868017de624f972",
+      "bodyTextPrefix": "Atomarium 0 OF 6 BENCHES ATOMIC PHYSICS The atom, in your hands.",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Atomarium",
+      "hasCanvas": false,
+      "bodyTextLen": 898,
+      "bodyTextHash": "bc2639c10ba4eb72189666b15639995b0946775d5d1a354e7a5cb1b876c8aa70",
+      "bodyTextPrefix": "Atomarium 0 OF 6 BENCHES ATOMIC PHYSICS The atom, in your hands.",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
