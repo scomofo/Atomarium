@@ -24,7 +24,7 @@ export const STATIONS: Station[] = [
     id: "light",
     index: "03",
     title: "Light from hydrogen",
-    summary: "A jump between rungs is a photon with one exact color.",
+    summary: "An energy gap predicts a photon wavelength in this simplified model.",
   },
   {
     id: "decay",
@@ -105,7 +105,8 @@ export const MODELS: AtomModel[] = [
     person: "John Dalton",
     body: "Dalton needed an atom that could explain why compounds always use the same ratios of mass. His answer was a tiny, indivisible ball, identical for a given element. It is the model you still sketch when you only care about counting.",
     kept: "Elements come in atoms, and compounds combine them in whole-number ratios.",
-    dropped: "Atoms are not indivisible, and not every atom of an element is identical. Isotopes broke that second claim.",
+    dropped:
+      "Atoms are not indivisible, and not every atom of an element is identical. Isotopes broke that second claim.",
   },
   {
     id: "thomson",
@@ -114,16 +115,18 @@ export const MODELS: AtomModel[] = [
     person: "J. J. Thomson",
     body: "Cathode rays showed something smaller than an atom, with a negative charge. Thomson embedded those electrons in a soft sphere of positive charge, like fruit in a pudding, so the whole atom stayed neutral.",
     kept: "The electron, and the fact that an atom's charges cancel.",
-    dropped: "Positive charge is not smeared through the volume. The foil experiment put almost all the mass in one speck.",
+    dropped:
+      "Positive charge is not smeared through the volume. The foil experiment put almost all the mass in one speck.",
   },
   {
     id: "rutherford",
     year: "1911",
     name: "The nucleus",
     person: "Ernest Rutherford",
-    body: "A few alpha particles bounced back from gold foil. That is only possible if they hit something small, massive, and positive. The rest of the atom is empty enough that most alphas never notice it.",
+    body: "A few alpha particles bounced back from gold foil. Large backward deflections supported a small, massive, positively charged nucleus. Coulomb repulsion can turn a particle around without a surface collision. The rest of the atom is empty enough that most alphas never notice it.",
     kept: "A minute, massive, positive nucleus. The atom is mostly empty space.",
-    dropped: "Nothing in classical physics explains an electron that orbits without radiating its energy away and falling in. It should, in a fraction of a nanosecond.",
+    dropped:
+      "Nothing in classical physics explains an electron that orbits without radiating its energy away and falling in. It should, in a fraction of a nanosecond.",
   },
   {
     id: "bohr",
@@ -132,7 +135,8 @@ export const MODELS: AtomModel[] = [
     person: "Niels Bohr",
     body: "Bohr kept the nucleus and forbade the electron from sitting anywhere but a ladder of energies. A jump down releases one photon whose energy is exactly the gap. Hydrogen's spectrum fell out of the rule.",
     kept: "Quantized energy, and a photon for each jump. Hydrogen's lines match the formula.",
-    dropped: "The electron is not a planet on a rail. The picture fails as soon as a second electron shows up.",
+    dropped:
+      "The electron is not a planet on a rail. The picture fails as soon as a second electron shows up.",
   },
   {
     id: "quantum",
@@ -141,7 +145,8 @@ export const MODELS: AtomModel[] = [
     person: "Schrödinger, Heisenberg",
     body: "The modern orbital is not a path. It is a map of where an electron is likely to be found if you look. The 1s cloud is thickest at the nucleus and thins outward. A 2p orbital has two lobes and a node of zero between them.",
     kept: "Probability, spin, and a shell structure that actually builds the periodic table.",
-    dropped: "The comforting little orbit. What remains is a calculation that draws well and still is not a photograph.",
+    dropped:
+      "The comforting little orbit. What remains is a calculation that draws well and still is not a photograph.",
   },
 ];
 
@@ -257,7 +262,7 @@ export const QUESTIONS: Question[] = [
       "the foil contained no atoms",
     ],
     answer: 2,
-    why: "The nucleus is tiny next to the atom. Most trajectories never come close enough to feel it. On this course the nucleus is drawn far too big, so you will see more deflections than Geiger did.",
+    why: "The nucleus is tiny next to the atom. Most trajectories never come close enough to feel it. This bench deliberately samples trajectories to demonstrate deflection; its counts do not predict experimental percentages.",
   },
   {
     prompt: "Remove one electron from a neutral sodium atom. You have",

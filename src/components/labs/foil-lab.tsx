@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bench } from "@/components/bench";
-import {
-  classifyScatter,
-  stepScatter,
-  type ScatterBody,
-  type ScatterClass,
-} from "@/lib/physics";
+import { classifyScatter, stepScatter, type ScatterBody, type ScatterClass } from "@/lib/physics";
 
 type Energy = "low" | "medium" | "high";
 
@@ -194,18 +189,20 @@ export function FoilLab() {
       notes={
         <>
           <p>
-            Rutherford said it was almost as incredible as if you fired a 15-inch shell at a piece
-            of tissue paper and it came back and hit you. The mass of the atom had to sit in a
-            speck. The rest was empty.
+            Large backward deflections showed that the atom’s positive charge and most of its mass
+            are concentrated in a small nucleus. A positive alpha particle is repelled by the
+            positive nucleus; it need not hit a solid surface to turn around.
           </p>
           <p>
-            About one alpha in eight thousand bounced back in that experiment. This bench draws the
-            gold nucleus absurdly large, so you will scatter more than Geiger did. Lower energy
-            deflects more. A head-on shot is the one that can turn around.
+            This is a qualitative, single-nucleus Coulomb-repulsion model. The visible nuclear disc
+            does not set a collision boundary. At the same impact parameter (the incoming path’s
+            offset from the centre), lower energy gives a larger deflection. A head-on shot reverses
+            under repulsion.
           </p>
           <p className="text-fog">
-            Tap the chamber to choose a height and fire. A beam shows the famous mix: mostly
-            straight through, a few bent, rarely a bounce.
+            Tap the chamber to choose a height and fire. The beam deliberately samples offsets and
+            includes a head-on shot. Its counts are not experimental scattering percentages; the
+            drawing and coordinates are not a physical scale model of gold foil.
           </p>
         </>
       }

@@ -168,33 +168,38 @@ export type ScatterBody = {
 
 export const COULOMB = 1_050_000;
 
-export function stepScatter(body: ScatterBody, cx: number, cy: number, dt: number, w: number, h: number) {
-  const sub = 24;
-  const hdt = dt / sub;
-  for (let i = 0; i < sub; i += 1) {
-    let dx = body.x - cx;
-    let dy = body.y - cy;
-    let r = Math.hypot(dx, dy);
-    if (r < 8) {
-      const nx = dx / (r || 1);
-      const ny = dy / (r || 1);
-      const radial = body.vx * nx + body.vy * ny;
-      if (radial < 0) {
-        body.vx -= 2 * radial * nx;
-        body.vy -= 2 * radial * ny;
-      }
-      body.x = cx + nx * 8;
-      body.y = cy + ny * 8;
-      dx = body.x - cx;
-      dy = body.y - cy;
-      r = 8;
-    }
-    const force = COULOMB / (r * r);
-    body.vx += ((force * dx) / r) * hdt;
-    body.vy += ((force * dy) / r) * hdt;
-    body.x += body.vx * hdt;
-    body.y += body.vy * hdt;
+export function stepScatter(
+  body: ScatterBody,
+  cx: number,
+  cy: number,
+  dt: number,
+  w: number,
+  h: number,
+) {
+  let remaining = dt;
+  while (remaining > 1e-12) {
+    const dx = body.x - cx;
+    const dy = body.y - cy;
+    const r = Math.hypot(dx, dy);
+    if (r === 0) throw new RangeError("Scattering cannot start at the point nucleus.");
+    const speed = Math.hypot(body.vx, body.vy);
+    const hdt = Math.min(
+      remaining,
+      0.0002,
+      (0.02 * r) / Math.max(1, speed),
+      0.02 * Math.sqrt(r ** 3 / COULOMB),
+    );
+    const ax = (COULOMB * dx) / r ** 3;
+    const ay = (COULOMB * dy) / r ** 3;
+    body.x += body.vx * hdt + 0.5 * ax * hdt ** 2;
+    body.y += body.vy * hdt + 0.5 * ay * hdt ** 2;
+    const nextDx = body.x - cx;
+    const nextDy = body.y - cy;
+    const nextR = Math.hypot(nextDx, nextDy);
+    body.vx += 0.5 * (ax + (COULOMB * nextDx) / nextR ** 3) * hdt;
+    body.vy += 0.5 * (ay + (COULOMB * nextDy) / nextR ** 3) * hdt;
     body.age += hdt;
+    remaining -= hdt;
   }
   if (body.age > 0.08 && (body.x < 6 || body.x > w - 6 || body.y < 6 || body.y > h - 6)) {
     body.done = true;
