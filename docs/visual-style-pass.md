@@ -40,5 +40,7 @@ confusion in the Linux helpers.
   and preview ports 4173/4174/4175. Per-app overrides, startup reuse, and preview
   restart/stop isolation also pass.
 - 55 application-data/auth unit tests pass per repo.
-- The full script suite retains the same eight existing share-card fixture
-  failures documented in `curriculum-corrections.md`; no new failures were added.
+- The share-card fixture follow-up resolves the original eight failures. Full
+  `npm test` now passes (210 script tests plus 55 application-data/auth tests).
+  Generic fixtures are isolated; a separate check covers the app’s real branding
+  and baked deployment identity. See `curriculum-corrections.md`.
