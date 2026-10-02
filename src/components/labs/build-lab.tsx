@@ -5,23 +5,11 @@ import { Bench } from "@/components/bench";
 import { ELEMENTS, PRESETS } from "@/lib/course-data";
 import { chargeText, configuration, ionWord } from "@/lib/physics";
 
+import { stabilityLine } from "@/lib/isotopes";
+
 const MAX_P = 20;
 const MAX_N = 40;
 const MAX_E = 26;
-
-function stabilityLine(protons: number, neutrons: number): string {
-  const element = ELEMENTS[protons - 1];
-  if (!element) return "";
-  const mass = protons + neutrons;
-  if (element.stable.includes(mass)) {
-    return `${element.name}-${mass} is a stable isotope. It does not decay on any ordinary clock.`;
-  }
-  const least = Math.min(...element.stable);
-  if (mass < least) {
-    return `Too few neutrons for a stable ${element.name.toLowerCase()} nucleus. This one would not last.`;
-  }
-  return `Too many neutrons for stable ${element.name.toLowerCase()}. A nucleus like this decays until the ratio is comfortable.`;
-}
 
 function Counter({
   label,
@@ -54,11 +42,23 @@ function Counter({
       </div>
       <p className="mt-1 text-xs text-fog">{hint}</p>
       <div className="mt-3 flex items-center justify-between gap-2">
-        <button type="button" className="btn btn-icon" aria-label={removeLabel} onClick={onRemove} disabled={!canRemove}>
+        <button
+          type="button"
+          className="btn btn-icon"
+          aria-label={removeLabel}
+          onClick={onRemove}
+          disabled={!canRemove}
+        >
           <Minus className="size-4" aria-hidden="true" />
         </button>
         <span className="font-display text-3xl text-mist tabular-nums">{value}</span>
-        <button type="button" className="btn btn-icon" aria-label={addLabel} onClick={onAdd} disabled={!canAdd}>
+        <button
+          type="button"
+          className="btn btn-icon"
+          aria-label={addLabel}
+          onClick={onAdd}
+          disabled={!canAdd}
+        >
           <Plus className="size-4" aria-hidden="true" />
         </button>
       </div>
@@ -87,12 +87,18 @@ export function BuildLab() {
           </p>
           <p>
             This bench stops at calcium, element 20. That is far enough for shells, ions, and the
-            common isotopes, and short of the messier middle of the table. The filling order here
-            is the real one: 4s before 3d, Hund’s rule in the boxes.
+            common isotopes, and short of the messier middle of the table. The boxes use a
+            simplified filling-order model. It is appropriate for the neutral atoms through calcium;
+            arbitrary ions and extra electrons are bookkeeping demonstrations, not verified bound
+            states.
           </p>
           <p className="text-fog">
             Brass is a proton. Stone is a neutron. The aqua dots are electrons. The rings are a
-            drawing of shells, not orbits the electron travels.
+            drawing of shells, not paths an electron travels. A shell groups states by principal
+            level n; a subshell (s, p, or d) groups orbital types within a shell. Each box is one
+            orbital, a state describing a probability distribution. Each arrow is one electron’s
+            spin label, not literal rotation; two electrons in one orbital have opposite spin
+            labels. Z counts protons; A counts protons plus neutrons.
           </p>
         </>
       }
@@ -107,7 +113,9 @@ export function BuildLab() {
                   <sup className="mr-1 text-lg text-fog tabular-nums">{mass}</sup>
                   {element.symbol}
                   {protons !== electrons ? (
-                    <sub className="ml-1 text-base text-brass">{chargeText(protons, electrons)}</sub>
+                    <sup className="ml-1 text-base text-brass">
+                      {chargeText(protons, electrons)}
+                    </sup>
                   ) : null}
                 </p>
                 <p className="mt-1 text-sm text-fog">
@@ -117,7 +125,9 @@ export function BuildLab() {
             ) : (
               <>
                 <p className="font-display text-3xl text-mist">No element yet</p>
-                <p className="mt-1 text-sm text-fog">An atom needs at least one proton to have a name.</p>
+                <p className="mt-1 text-sm text-fog">
+                  An atom needs at least one proton to have a name.
+                </p>
               </>
             )}
           </div>
@@ -129,7 +139,9 @@ export function BuildLab() {
           </dl>
         </div>
         <p className="mt-3 min-h-10 text-sm leading-relaxed text-mist">
-          {element ? stabilityLine(protons, neutrons) : "Add protons to choose an element from hydrogen through calcium."}
+          {element
+            ? stabilityLine(protons, neutrons)
+            : "Add protons to choose an element from hydrogen through calcium."}
         </p>
 
         <div className="mt-4 flex flex-wrap gap-2">

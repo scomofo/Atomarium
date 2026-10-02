@@ -6,8 +6,10 @@ const LEVELS = [1, 2, 3, 4, 5, 6];
 const NM_MIN = 50;
 const NM_MAX = 1600;
 
+const onScale = (nm: number) => nm >= NM_MIN && nm <= NM_MAX;
+
 function nmPct(nm: number) {
-  return ((Math.min(NM_MAX, Math.max(NM_MIN, nm)) - NM_MIN) / (NM_MAX - NM_MIN)) * 100;
+  return ((nm - NM_MIN) / (NM_MAX - NM_MIN)) * 100;
 }
 
 function formatNm(nm: number) {
@@ -53,22 +55,26 @@ export function LightLab() {
   return (
     <Bench
       id="light"
-      lede="Hydrogen is the only atom this formula gets exactly right. One proton, one electron, and a ladder of allowed energies."
+      lede="This bench uses a simplified model of hydrogen’s allowed energy levels. It predicts the main spectral pattern, not every small splitting in the measured spectrum."
       notes={
         <>
           <p>
-            The photon’s energy is the gap between rungs, not the height of a rung. A drop from 3
-            to 2 is red light. The same electron falling from 2 to 1 is ultraviolet, and several
-            times more energetic.
+            The photon’s energy is the gap between rungs, not the height of a rung. A drop from 3 to
+            2 is red light. The same electron falling from 2 to 1 is ultraviolet, and several times
+            more energetic.
           </p>
           <p>
-            Emission lines are collected on the strip. Absorptions climb the ladder and do not
-            paint a line — a line, in a discharge tube, is light leaving the atom.
+            Emission lines are collected on the strip. Absorptions climb the ladder and do not paint
+            a line — a line, in a discharge tube, is light leaving the atom.
           </p>
-          <p className="font-display text-lg text-brass">E = −13.6 eV / n²</p>
+          <p className="font-display text-lg text-brass">Eₙ ≈ −13.6 eV / n²</p>
           <p className="text-fog">
-            The rungs are spaced for a finger, not for energy. The electron-volts on each rung are
-            the real gaps, and they bunch up near zero.
+            n labels a principal energy level; n = 1 is the ground state. Eₙ is the level energy
+            relative to a free electron at zero. An electron-volt (eV) is an energy unit. Wavelength
+            is the spacing between wave peaks, here in nanometres (nm). For 3 → 2, Eγ = E₃ − E₂ ≈
+            (−1.51) − (−3.40) = 1.89 eV. The rungs are spaced for tapping, not to an energy scale.
+            Their labelled energies bunch toward zero. This hydrogen formula also has a
+            nuclear-charge extension for one-electron ions.
           </p>
         </>
       }
@@ -82,7 +88,9 @@ export function LightLab() {
                 className="pointer-events-none absolute right-6 left-24 h-px bg-line"
                 style={{ bottom: "94%" }}
               />
-              <span className="pointer-events-none absolute top-3 right-4 text-xs text-fog">0 eV</span>
+              <span className="pointer-events-none absolute top-3 right-4 text-xs text-fog">
+                0 eV
+              </span>
               {ladder.map((rung) => (
                 <button
                   key={rung.level}
@@ -92,7 +100,9 @@ export function LightLab() {
                   onClick={() => jump(rung.level)}
                   aria-pressed={n === rung.level}
                 >
-                  <span className={`w-10 text-sm tabular-nums ${n === rung.level ? "text-brass" : "text-fog"}`}>
+                  <span
+                    className={`w-10 text-sm tabular-nums ${n === rung.level ? "text-brass" : "text-fog"}`}
+                  >
                     n={rung.level}
                   </span>
                   <span className={`h-px flex-1 ${n === rung.level ? "bg-brass" : "bg-line"}`} />
@@ -113,7 +123,9 @@ export function LightLab() {
               className="flex h-28 items-end rounded-xl border border-line px-4 py-3"
               style={{ background: flash ?? "var(--color-chamber)" }}
             >
-              <p className={`text-xs tracking-widest uppercase ${flash ? "text-chamber" : "text-fog"}`}>
+              <p
+                className={`text-xs tracking-widest uppercase ${flash ? "text-chamber" : "text-fog"}`}
+              >
                 Discharge tube
               </p>
             </div>
@@ -145,7 +157,9 @@ export function LightLab() {
                   </div>
                 </dl>
               ) : (
-                <p className="mt-2 text-sm text-fog">Tap a rung. Higher is an absorption. Lower is light leaving.</p>
+                <p className="mt-2 text-sm text-fog">
+                  Tap a rung. Higher is an absorption. Lower is light leaving.
+                </p>
               )}
             </div>
           </div>
@@ -169,21 +183,36 @@ export function LightLab() {
               visible
             </span>
             <span className="absolute right-2 bottom-1 text-xs text-mist">IR</span>
-            {lines.map((line) => {
-              const color = wavelengthRgb(line.nm) ?? "var(--color-mist)";
-              return (
-                <span
-                  key={`${line.high}-${line.low}`}
-                  className="absolute top-1 bottom-5 w-0.5"
-                  style={{ left: `${nmPct(line.nm)}%`, background: color }}
-                  title={`${line.series} ${formatNm(line.nm)}`}
-                />
-              );
-            })}
+            {lines
+              .filter((line) => onScale(line.nm))
+              .map((line) => {
+                const color = wavelengthRgb(line.nm) ?? "var(--color-mist)";
+                return (
+                  <span
+                    key={`${line.high}-${line.low}`}
+                    className="absolute top-1 bottom-5 w-0.5"
+                    style={{ left: `${nmPct(line.nm)}%`, background: color }}
+                    title={`${line.series} ${formatNm(line.nm)}`}
+                  />
+                );
+              })}
           </div>
           <p className="mt-2 text-xs text-fog">
-            Ultraviolet sits left of the colored window, infrared to the right. A Balmer drop into n = 2 is the one that lands in the window.
+            This strip spans 50–1600 nm. Ultraviolet sits left of the coloured window; infrared sits
+            right. The selectable Balmer transitions end at n = 2 and fall in the visible window.
+            Longer infrared wavelengths are listed below, not placed at the edge.
           </p>
+          {lines.some((line) => !onScale(line.nm)) ? (
+            <ul className="mt-2 space-y-1 text-sm text-mist" aria-label="Off-scale emission lines">
+              {lines
+                .filter((line) => !onScale(line.nm))
+                .map((line) => (
+                  <li key={`${line.high}-${line.low}`}>
+                    Off scale: {line.high} → {line.low} · {formatNm(line.nm)} · {line.band}
+                  </li>
+                ))}
+            </ul>
+          ) : null}
         </div>
       </div>
     </Bench>

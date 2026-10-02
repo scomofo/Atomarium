@@ -55,8 +55,8 @@ export function CheckLab() {
       notes={
         <>
           <p>
-            A right answer without the mechanism is just a memory. The note under each choice is
-            the part worth keeping.
+            A right answer without the mechanism is just a memory. The note under each choice is the
+            part worth keeping.
           </p>
           <p className="text-fog tabular-nums">
             {attempts > 0 ? `Best so far: ${bestScore} of ${QUESTIONS.length}.` : "No score yet."}
@@ -76,7 +76,7 @@ export function CheckLab() {
             </h2>
             <p className="mt-2 text-sm text-fog">
               {correct === QUESTIONS.length
-                ? "Clean sweep. The benches have nothing left to hide."
+                ? "All eight knowledge questions correct. You practised atomic number, isotopes, charge, spectral transitions, half-life, and evidence for a nucleus. Try applying them without the hints next."
                 : "The misses are listed with the reason. The benches are still there if you want another look."}
             </p>
             <ul className="mt-5 space-y-4">

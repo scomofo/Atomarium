@@ -96,7 +96,7 @@ export function DecayLab() {
     cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     cctx.fillStyle = chamber;
     cctx.fillRect(0, 0, cw, ch);
-    const pad = 16;
+    const pad = 36;
     const plotW = cw - pad * 2;
     const plotH = ch - pad * 2;
     const maxT = Math.max(4, timeRef.current, ...samplesRef.current.map((sample) => sample.t));
@@ -137,6 +137,15 @@ export function DecayLab() {
     cctx.fillText("theory", pad + 8, pad + 12);
     cctx.fillStyle = mist;
     cctx.fillText("this run", pad + 58, pad + 12);
+    cctx.fillStyle = fog;
+    cctx.textAlign = "right";
+    for (const count of [0, 72, 144])
+      cctx.fillText(String(count), pad - 5, pad + plotH * (1 - count / ATOM_COUNT) + 4);
+    cctx.textAlign = "center";
+    for (let t = 0; t <= maxT; t += Math.max(1, Math.ceil(maxT / 4)))
+      cctx.fillText(String(t), pad + (t / maxT) * plotW, pad + plotH + 14);
+    cctx.fillText("Elapsed time (half-lives)", cw / 2, ch - 5);
+    cctx.textAlign = "left";
   }
 
   function publish() {
@@ -228,8 +237,8 @@ export function DecayLab() {
           </p>
           <p>
             The clock on this bench is measured in half-lives, so fluorine-18 and uranium-238 play
-            at the same speed. In a real lab they do not. The dashed curve is the ideal
-            exponential. A few hundred atoms never sit on it exactly.
+            at the same speed. In a real lab they do not. The dashed curve is the ideal exponential.
+            A few hundred atoms never sit on it exactly.
           </p>
           <p className="text-fog">
             A picture of the statistics, not a radioactive source. Nothing here is hot.
@@ -281,11 +290,29 @@ export function DecayLab() {
           </div>
         </div>
 
-        <canvas ref={chartRef} className="mt-4 h-36 w-full rounded-xl border border-line" />
+        <p className="mt-4 text-xs text-fog">
+          Parent nuclei remaining (count) versus elapsed time (half-lives). Repeat a reset-and-run
+          trial: the individual counts vary around the expected curve, rather than reaching exactly
+          36 after two half-lives.
+        </p>
+        <canvas
+          ref={chartRef}
+          role="img"
+          aria-label="Parent nuclei remaining against elapsed time in half-lives; dashed expected curve and solid observed run"
+          className="mt-2 h-48 w-full rounded-xl border border-line"
+        />
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className="btn btn-brass" onClick={() => setRunning((value) => !value)}>
-            {running ? <Pause className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}
+          <button
+            type="button"
+            className="btn btn-brass"
+            onClick={() => setRunning((value) => !value)}
+          >
+            {running ? (
+              <Pause className="size-4" aria-hidden="true" />
+            ) : (
+              <Play className="size-4" aria-hidden="true" />
+            )}
             {running ? "Pause" : "Run"}
           </button>
           <button type="button" className="btn" onClick={jumpHalfLife}>
