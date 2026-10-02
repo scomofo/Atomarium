@@ -63,7 +63,9 @@ const timeoutMs = Number(process.env.BROWSER_SMOKE_TIMEOUT_MS || 45000);
 
 const VIEWPORTS = [
   { name: "desktop", width: 1280, height: 800, screenshot: outPng },
-  { name: "mobile", width: 390, height: 844, screenshot: mobilePng },
+  ...(process.env.BROWSER_SMOKE_MOBILE === "true"
+    ? [{ name: "mobile", width: 390, height: 844, screenshot: mobilePng }]
+    : []),
 ];
 
 mkdirSync(dirname(outPng), { recursive: true });

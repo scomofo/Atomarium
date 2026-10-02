@@ -8,7 +8,8 @@ import { checkedOutputPath, checkedUrl } from "./browser-guard.mjs";
 
 // The service always passes a loopback URL and a /tmp path; the checks keep that
 // true when the script is invoked by hand.
-const url = checkedUrl(process.argv[2] || "http://127.0.0.1:8080/");
+import { devUrl } from "./local-ports.mjs";
+const url = checkedUrl(process.argv[2] || devUrl());
 const outPng = checkedOutputPath(process.argv[3] || "/tmp/preview-thumbnail.png", [
   "/tmp",
   "/workspace",
