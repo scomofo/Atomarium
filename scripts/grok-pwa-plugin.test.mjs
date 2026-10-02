@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import test from "node:test";
+import test, { after } from "node:test";
 import {
   appNameFromHost,
   createHeadInjector,
@@ -20,9 +20,21 @@ import {
 import { renderInstallPage } from "./grok-pwa-plugin.mjs";
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// Template fixtures must not inherit this app's site.json or public/og.jpg.
+// Explicit cwd/site contexts still exercise disk and baked identity behavior.
+const EMPTY_PROJECT = mkdtempSync(join(tmpdir(), "grok-pwa-fixtures-"));
+after(() => rmSync(EMPTY_PROJECT, { recursive: true, force: true }));
+
+function injectFixtureHead(html, ctx = {}) {
+  return injectGrokPwaHead(html, { cwd: EMPTY_PROJECT, ...ctx });
+}
+
+function createFixtureHeadInjector(ctx = {}) {
+  return createHeadInjector({ cwd: EMPTY_PROJECT, ...ctx });
+}
 
 test("injects before </head>", () => {
-  const out = injectGrokPwaHead("<html><head><title>x</title></head><body></body></html>");
+  const out = injectFixtureHead("<html><head><title>x</title></head><body></body></html>");
   assert.match(out, /rel="manifest"/);
   assert.match(out, /apple-touch-icon/);
   assert.match(out, /grok-app-builder\/extensions\.js/);
@@ -30,7 +42,7 @@ test("injects before </head>", () => {
 });
 
 test("injects the extensions script without a project id", () => {
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     appName: "Demo",
     projectId: "",
   });
@@ -41,7 +53,7 @@ test("injects the extensions script without a project id", () => {
 });
 
 test("injects project id on the script and meta when provided", () => {
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     appName: "Demo",
     projectId: "proj-123",
   });
@@ -52,8 +64,8 @@ test("injects project id on the script and meta when provided", () => {
 
 test("does not duplicate grok:app_id", () => {
   const ctx = { appName: "Demo", projectId: "proj-123" };
-  const once = injectGrokPwaHead("<html><head></head></html>", ctx);
-  const twice = injectGrokPwaHead(once, ctx);
+  const once = injectFixtureHead("<html><head></head></html>", ctx);
+  const twice = injectFixtureHead(once, ctx);
   assert.equal(once, twice);
   assert.equal(twice.split('property="grok:app_id"').length - 1, 1);
 });
@@ -61,7 +73,7 @@ test("does not duplicate grok:app_id", () => {
 test("omits x:creator tags without both creator values", () => {
   assert.deepEqual(grokXCreatorHeadTags("", "42"), []);
   assert.deepEqual(grokXCreatorHeadTags("@alice", ""), []);
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     appName: "Demo",
     projectId: "",
     creator: "@alice",
@@ -71,7 +83,7 @@ test("omits x:creator tags without both creator values", () => {
 });
 
 test("injects x:creator tags when both creator values are set", () => {
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     appName: "Demo",
     projectId: "",
     creator: "@alice",
@@ -83,20 +95,14 @@ test("injects x:creator tags when both creator values are set", () => {
 
 test("escapes x:creator values", () => {
   const tags = grokXCreatorHeadTags('"><script>', '1" onclick="alert(1)');
-  assert.equal(
-    tags[0],
-    '<meta property="x:creator" content="&quot;&gt;&lt;script&gt;">',
-  );
-  assert.equal(
-    tags[1],
-    '<meta property="x:creator:id" content="1&quot; onclick=&quot;alert(1)">',
-  );
+  assert.equal(tags[0], '<meta property="x:creator" content="&quot;&gt;&lt;script&gt;">');
+  assert.equal(tags[1], '<meta property="x:creator:id" content="1&quot; onclick=&quot;alert(1)">');
 });
 
 test("does not duplicate x:creator tags", () => {
   const ctx = { appName: "Demo", projectId: "", creator: "@alice", creatorId: "42" };
-  const once = injectGrokPwaHead("<html><head></head></html>", ctx);
-  const twice = injectGrokPwaHead(once, ctx);
+  const once = injectFixtureHead("<html><head></head></html>", ctx);
+  const twice = injectFixtureHead(once, ctx);
   assert.equal(once, twice);
   assert.equal(twice.split('property="x:creator" content=').length - 1, 1);
   assert.equal(twice.split('property="x:creator:id"').length - 1, 1);
@@ -105,7 +111,7 @@ test("does not duplicate x:creator tags", () => {
 test("platform chrome overwrites share-card metas and always sets og:title", () => {
   const html =
     '<html><head><title>Hello World</title><meta property="og:title" content="Old"><meta name="twitter:card" content="summary"></head></html>';
-  const out = injectGrokPwaHead(html, { appName: "Wild Race" });
+  const out = injectFixtureHead(html, { appName: "Wild Race" });
   assert.match(out, /name="twitter:card" content="summary_large_image"/);
   assert.match(out, /property="og:title" content="Hello World"/);
   assert.doesNotMatch(out, /content="Old"/);
@@ -116,15 +122,15 @@ test("platform chrome overwrites share-card metas and always sets og:title", () 
 });
 
 test("does not duplicate twitter:card or og:title", () => {
-  const once = injectGrokPwaHead("<html><head><title>Hello World</title></head></html>");
-  const twice = injectGrokPwaHead(once);
+  const once = injectFixtureHead("<html><head><title>Hello World</title></head></html>");
+  const twice = injectFixtureHead(once);
   assert.equal(once, twice);
   assert.equal(twice.split('name="twitter:card"').length - 1, 1);
   assert.equal(twice.split('property="og:title"').length - 1, 1);
 });
 
 test("a baked site.image is treated as a custom card", () => {
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     cwd: mkdtempSync(join(tmpdir(), "grok-og-image-only-")),
     site: { title: "Wild Race", image: "/og.jpg" },
@@ -135,7 +141,7 @@ test("a baked site.image is treated as a custom card", () => {
 
 test("baked identity does not need a workspace filesystem", () => {
   const empty = mkdtempSync(join(tmpdir(), "grok-og-empty-"));
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     cwd: empty,
     site: { title: "Pixel Nova", type: "x:game", card: "custom" },
@@ -152,7 +158,7 @@ test("a public card file wins over a baked site without card=custom", () => {
   const root = mkdtempSync(join(tmpdir(), "grok-og-card-"));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/og.jpg"), "x");
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     cwd: root,
     site: {},
@@ -165,7 +171,7 @@ test("public/og.png wins when jpg is absent", () => {
   const root = mkdtempSync(join(tmpdir(), "grok-og-png-"));
   mkdirSync(join(root, "public"));
   writeFileSync(join(root, "public/og.png"), "x");
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     cwd: root,
     site: { title: "Wild Race" },
@@ -208,8 +214,8 @@ test("snapshotOgIdentity stamps banner from public/x-banner.jpg", () => {
 });
 
 test("emits x:game:image for a public host when site.banner is set", () => {
-  const html = "<html><head><meta property=\"x:game:image\" content=\"old\"></head></html>";
-  const out = injectGrokPwaHead(html, {
+  const html = '<html><head><meta property="x:game:image" content="old"></head></html>';
+  const out = injectFixtureHead(html, {
     host: "wild-race.grok.me",
     site: { title: "Wild Race", type: "x:game", card: "custom", banner: "/x-banner.jpg" },
   });
@@ -224,11 +230,11 @@ test("emits x:game:image for a public host when site.banner is set", () => {
 });
 
 test("does not emit x:game:image without a public host or banner", () => {
-  const noHost = injectGrokPwaHead("<html><head></head></html>", {
+  const noHost = injectFixtureHead("<html><head></head></html>", {
     site: { banner: "/x-banner.jpg" },
   });
   assert.doesNotMatch(noHost, /x:game:image/);
-  const noBanner = injectGrokPwaHead("<html><head></head></html>", {
+  const noBanner = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     site: { type: "x:game", card: "custom" },
   });
@@ -236,7 +242,7 @@ test("does not emit x:game:image without a public host or banner", () => {
 });
 
 test("site title Grok App is a real name, not a sentinel", () => {
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     site: { title: "Grok App" },
   });
@@ -244,14 +250,17 @@ test("site title Grok App is a real name, not a sentinel", () => {
 });
 
 test("published grok.me slug is still a title fallback", () => {
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
   });
   assert.match(out, /property="og:title" content="Wild Race"/);
 });
 
 test("rejects Vercel system hosts as og:image origins", () => {
-  assert.equal(publicAppHost("01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app"), "");
+  assert.equal(
+    publicAppHost("01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app"),
+    "",
+  );
   assert.equal(publicAppHost("demo.vercel.app:443"), "");
   assert.equal(publicAppHost("vercel.app"), "");
   assert.equal(publicAppHost("wild-race.grok.me"), "wild-race.grok.me");
@@ -261,7 +270,7 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
   const prev = process.env.VITE_PUBLIC_HOSTNAME;
   process.env.VITE_PUBLIC_HOSTNAME = "plum-plaza-reef-dream.grok.me";
   try {
-    const vercelHost = injectGrokPwaHead("<html><head><title>RACK</title></head></html>", {
+    const vercelHost = injectFixtureHead("<html><head><title>RACK</title></head></html>", {
       host: "01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app",
       site: { title: "RACK", card: "custom" },
     });
@@ -271,7 +280,7 @@ test("published VITE_PUBLIC_HOSTNAME wins over request Host for og:image", () =>
     );
     assert.doesNotMatch(vercelHost, /vercel\.app/);
 
-    const otherPublicHost = injectGrokPwaHead("<html><head><title>RACK</title></head></html>", {
+    const otherPublicHost = injectFixtureHead("<html><head><title>RACK</title></head></html>", {
       host: "custom.example.com",
       site: { title: "RACK", card: "custom" },
     });
@@ -290,7 +299,7 @@ test("vercel Host without a public hostname emits no og:image", () => {
   const prev = process.env.VITE_PUBLIC_HOSTNAME;
   delete process.env.VITE_PUBLIC_HOSTNAME;
   try {
-    const out = injectGrokPwaHead("<html><head><title>RACK</title></head></html>", {
+    const out = injectFixtureHead("<html><head><title>RACK</title></head></html>", {
       host: "01a020b6-803a-71a2-bb47-e2bec57eb9a2-662k8x1l1-xai-org.vercel.app",
       site: { title: "RACK", card: "custom" },
     });
@@ -303,7 +312,7 @@ test("vercel Host without a public hostname emits no og:image", () => {
 });
 
 test("emits og:image for a public host and prefers a custom card", () => {
-  const placeholder = injectGrokPwaHead("<html><head></head></html>", {
+  const placeholder = injectFixtureHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.grok.me",
     site: { title: "Wild Race" },
@@ -314,7 +323,7 @@ test("emits og:image for a public host and prefers a custom card", () => {
   );
   assert.match(placeholder, /property="og:image:width" content="1200"/);
 
-  const custom = injectGrokPwaHead("<html><head></head></html>", {
+  const custom = injectFixtureHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.grok.me",
     site: { title: "Wild Race", card: "custom", type: "x:game" },
@@ -324,7 +333,7 @@ test("emits og:image for a public host and prefers a custom card", () => {
 });
 
 test("placeholder og:image appends site.color when it is 6-digit hex", () => {
-  const themed = injectGrokPwaHead("<html><head></head></html>", {
+  const themed = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     site: { title: "Wild Race", color: "#FF4D2E" },
   });
@@ -333,13 +342,13 @@ test("placeholder og:image appends site.color when it is 6-digit hex", () => {
     /property="og:image" content="https:\/\/og\.grok\.me\/v1\/card\.png\?host=wild-race\.grok\.me&amp;title=Wild%20Race&amp;color=FF4D2E"/,
   );
 
-  const invalid = injectGrokPwaHead("<html><head></head></html>", {
+  const invalid = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     site: { title: "Wild Race", color: "red" },
   });
   assert.doesNotMatch(invalid, /color=/);
 
-  const custom = injectGrokPwaHead("<html><head></head></html>", {
+  const custom = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     site: { title: "Wild Race", card: "custom", color: "FF4D2E" },
   });
@@ -347,15 +356,13 @@ test("placeholder og:image appends site.color when it is 6-digit hex", () => {
 });
 
 test("document title entities are not double-escaped on og:title", () => {
-  const out = injectGrokPwaHead(
-    "<html><head><title>Cats &amp; Dogs</title></head></html>",
-  );
+  const out = injectFixtureHead("<html><head><title>Cats &amp; Dogs</title></head></html>");
   assert.match(out, /property="og:title" content="Cats &amp; Dogs"/);
   assert.doesNotMatch(out, /Cats &amp;amp; Dogs/);
 });
 
 test("site.json title wins over the host slug", () => {
-  const out = injectGrokPwaHead("<html><head></head></html>", {
+  const out = injectFixtureHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     site: { title: "Pixel Nova" },
   });
@@ -363,14 +370,14 @@ test("site.json title wins over the host slug", () => {
 });
 
 test("injects into documents with no head element", () => {
-  const out = injectGrokPwaHead("<html><body>hi</body></html>", { appName: "Solo" });
+  const out = injectFixtureHead("<html><body>hi</body></html>", { appName: "Solo" });
   assert.match(out, /<head>/);
   assert.match(out, /property="og:title" content="Solo"/);
   assert.match(out, /<\/head>/);
 });
 
 test("streaming injector matches </HEAD> case-insensitively", () => {
-  const injector = createHeadInjector({ appName: "Wild Race" });
+  const injector = createFixtureHeadInjector({ appName: "Wild Race" });
   const chunks = [
     ...injector.push("<html><HEAD><title>x</title></HE"),
     ...injector.push("AD><body>hello</body></html>"),
@@ -386,12 +393,12 @@ test("omits the extensions script when the deployer disables it", () => {
   try {
     const baked =
       '<html><head><script src="https://grok.com/grok-app-builder/extensions.js" data-project-id="old" defer></script></head></html>';
-    const out = injectGrokPwaHead(baked, { appName: "Demo", projectId: "proj-123" });
+    const out = injectFixtureHead(baked, { appName: "Demo", projectId: "proj-123" });
     assert.doesNotMatch(out, /grok-app-builder\/extensions\.js/);
     assert.match(out, /name="grok-project-id" content="proj-123"/);
     assert.match(out, /property="grok:app_id" content="proj-123"/);
     assert.match(out, /rel="manifest"/);
-    const twice = injectGrokPwaHead(out, { appName: "Demo", projectId: "proj-123" });
+    const twice = injectFixtureHead(out, { appName: "Demo", projectId: "proj-123" });
     assert.equal(out, twice);
   } finally {
     if (previous === undefined) delete process.env.VITE_GROK_EXTENSIONS;
@@ -403,7 +410,7 @@ test("keeps the extensions script on commercial when the deployer enables it", (
   const previous = process.env.VITE_GROK_EXTENSIONS;
   process.env.VITE_GROK_EXTENSIONS = "1";
   try {
-    const out = injectGrokPwaHead("<html><head></head></html>", {
+    const out = injectFixtureHead("<html><head></head></html>", {
       appName: "Demo",
       projectId: "proj-123",
     });
@@ -417,25 +424,25 @@ test("keeps the extensions script on commercial when the deployer enables it", (
 
 test("does not duplicate the extensions script", () => {
   const ctx = { appName: "Demo", projectId: "proj-123" };
-  const once = injectGrokPwaHead("<html><head></head></html>", ctx);
-  const twice = injectGrokPwaHead(once, ctx);
+  const once = injectFixtureHead("<html><head></head></html>", ctx);
+  const twice = injectFixtureHead(once, ctx);
   assert.equal(once, twice);
   assert.equal(twice.split("extensions.js").length - 1, 1);
 });
 
 test("is idempotent", () => {
-  const once = injectGrokPwaHead("<html><head></head></html>");
-  const twice = injectGrokPwaHead(once);
+  const once = injectFixtureHead("<html><head></head></html>");
+  const twice = injectFixtureHead(once);
   assert.equal(once, twice);
 });
 
 test("uses the app name in the injected title tag", () => {
-  const out = injectGrokPwaHead("<html><head></head></html>", { appName: "Wild Race" });
+  const out = injectFixtureHead("<html><head></head></html>", { appName: "Wild Race" });
   assert.match(out, /apple-mobile-web-app-title" content="Wild Race"/);
 });
 
 test("streaming injector handles </head> split across chunks", () => {
-  const injector = createHeadInjector({ appName: "Wild Race" });
+  const injector = createFixtureHeadInjector({ appName: "Wild Race" });
   const chunks = [
     ...injector.push("<html><head><title>x</title></he"),
     ...injector.push("ad><body>hello</body></html>"),
@@ -448,14 +455,14 @@ test("streaming injector handles </head> split across chunks", () => {
 });
 
 test("streaming injector passes post-head chunks through untouched", () => {
-  const injector = createHeadInjector();
+  const injector = createFixtureHeadInjector();
   injector.push("<html><head></head>");
   const [tail] = injector.push("<body>tail</body>");
   assert.equal(tail.toString("utf8"), "<body>tail</body>");
 });
 
 test("streaming injector falls back when no </head> is seen", () => {
-  const injector = createHeadInjector();
+  const injector = createFixtureHeadInjector();
   assert.deepEqual(injector.push("<html><head>"), []);
   const out = Buffer.concat(injector.flush()).toString("utf8");
   assert.match(out, /rel="manifest"/);
@@ -539,3 +546,25 @@ test("vite plugin bakes og identity as a virtual module", () => {
   assert.match(plugin, /snapshotOgIdentity/);
 });
 
+// Exercise the real app identity separately from generic template fixtures.
+test("this app’s workspace and deployed snapshot retain its branded share card", () => {
+  const site = JSON.parse(readFileSync(join(TEMPLATE_ROOT, "src/lib/og/site.json"), "utf8"));
+  assert.ok(site.title);
+  assert.ok(readFileSync(join(TEMPLATE_ROOT, "public/og.jpg")).length > 0);
+  const baked = snapshotOgIdentity(TEMPLATE_ROOT).site;
+  assert.equal(baked.title, site.title);
+  assert.equal(baked.card, "custom");
+  assert.equal(baked.image, "/og.jpg");
+
+  for (const ctx of [{ cwd: TEMPLATE_ROOT }, { cwd: EMPTY_PROJECT, site: baked }]) {
+    const out = injectGrokPwaHead("<html><head><title>Fixture document</title></head></html>", {
+      ...ctx,
+      host: "course.grok.me",
+    });
+    assert.ok(out.includes(`<meta property="og:title" content="${site.title}">`));
+    assert.ok(out.includes(`<meta name="apple-mobile-web-app-title" content="${site.title}">`));
+    assert.match(out, /property="og:image" content="https:\/\/course\.grok\.me\/og\.jpg"/);
+    assert.doesNotMatch(out, /og\.grok\.me/);
+    assert.doesNotMatch(out, /property="og:title" content="Fixture document"/);
+  }
+});

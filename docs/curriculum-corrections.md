@@ -20,9 +20,22 @@ Edits are integrated into the learner-facing components and course data in this 
 - Desktop (1280 × 800) and mobile (390 × 844) development and built-output render checks: visible content, no uncaught page errors or horizontal overflow. Screenshots visually inspected.
 - Interactive acceptance used Playwright with a locally available Chromium binary because the repository’s expected browser download was unavailable and `agent-browser` was not installed. The Vite-only network-interface workaround was outside the repository and is not part of the change.
 
-### Full-suite limitation
+### Full-suite follow-up
 
-`npm test` is **not green**: eight share-card fixture tests fail in `scripts/grok-pwa-plugin.test.mjs`. The same eight failures were reproduced in untouched baseline source copies of each repository (189/197 script tests passed before this change). Their generic fixture title/card expectations conflict with the repositories’ existing site metadata and custom card. The curriculum tests introduce no additional failing tests. Because the script-test stage fails, the chained application-data/auth stage was executed separately. These unrelated template tests were not rewritten by this curriculum correction pass.
+At the original curriculum pass, eight share-card fixture tests failed in
+`scripts/grok-pwa-plugin.test.mjs`. The same failures were reproduced in untouched
+baseline source: generic fixtures accidentally read the app's real `site.json`
+and `public/og.jpg`, replacing the expected fixture titles and placeholder cards.
+
+The fixture-isolation follow-up resolves those failures by giving generic head
+injection and streaming tests an empty temporary project directory. All existing
+assertions remain. A separate integration check verifies the real app title and
+custom card from both its workspace and its baked deployment snapshot.
+
+`npm test` now passes: 210/210 script tests and 55/55
+application-data/auth tests. The three share-card suites also pass from an
+unrelated working directory (150/150 tests). Lint passes with existing warnings.
+Production share-card code, site metadata, and images were unchanged by this fix.
 
 ## Scope and remaining questions
 
