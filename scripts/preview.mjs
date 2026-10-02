@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 /**
- * Owns :8081, the built-output QA preview.
- *
- * `vite preview` is strictPort, so a preview left over from an earlier turn
- * both fails the next start and keeps serving the previous build's output.
- * Every restart therefore kills the current port owner first, whoever started
- * it. Owners come from /proc, so this runs only inside the Linux sandbox.
+ * Restarts this project's built-output QA preview. Other projects and unrelated
+ * port owners are never stopped. Vite selects another port when one is busy;
+ * readiness and .grok/preview.url use its actual reported URL.
  *
  *   node scripts/preview.mjs stop|restart
  */
@@ -20,15 +17,17 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { previewPort } from "./local-ports.mjs";
+import { localPid, namespaceId, procDirectory, projectProcess } from "./local-processes.mjs";
 
-const PREVIEW_PORT = 8081;
-const PREVIEW_URL = `http://127.0.0.1:${PREVIEW_PORT}/`;
+const PREVIEW_PORT = previewPort();
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PID_FILE = join(ROOT, ".grok/preview.pid");
 const LOG_FILE = join(ROOT, ".grok/preview.log");
+const URL_FILE = join(ROOT, ".grok/preview.url");
 const READY_TIMEOUT_MS = Number(process.env.PREVIEW_READY_TIMEOUT_MS || 60000);
 const GRACE_MS = 3000;
 const POLL_MS = 100;
@@ -91,20 +90,21 @@ export function looksLikePreviewProcess(cmdline) {
 }
 
 /**
- * Pids to signal. Port owners are owners by definition; the pidfile pid is only
- * a claim left by an earlier run — pids are re-used across hibernate/revive, so
- * signal it only when its command line still looks like the preview.
+ * Corroborate both the project directory and the command before signalling.
+ * A port or stale pidfile alone cannot establish ownership.
  */
-export function previewOwners({ portPids, pidFilePid, cmdlineOf }) {
-  const owners = new Set(portPids);
-  if (
-    pidFilePid !== null &&
-    !owners.has(pidFilePid) &&
-    looksLikePreviewProcess(cmdlineOf(pidFilePid))
-  ) {
-    owners.add(pidFilePid);
-  }
-  return [...owners];
+export function previewOwners({ portPids, pidFilePid, cmdlineOf, belongsToProject }) {
+  const candidates = new Set([...portPids, ...(pidFilePid === null ? [] : [pidFilePid])]);
+  return [...candidates].filter(
+    (pid) => belongsToProject(pid) && looksLikePreviewProcess(cmdlineOf(pid)),
+  );
+}
+
+export function previewUrlFromLog(log) {
+  // Vite colors terminal output with ANSI escape sequences.
+  // eslint-disable-next-line no-control-regex
+  const plain = String(log).replace(/\u001b\[[0-9;]*m/g, "");
+  return plain.match(/Local:\s+(http:\/\/(?:localhost|127\.0\.0\.1):\d+\/)/)?.[1] ?? null;
 }
 
 async function waitForExit(pids, { isAlive, sleep, timeoutMs, pollMs }) {
@@ -134,25 +134,18 @@ export async function terminatePids(
 }
 
 /**
- * What `stop` reports. `after` is the post-kill port check: `unattributed: true`
- * means a listener exists whose pid could not be resolved, so it may not claim
- * the port is free.
+ * What `stop` reports. `after.pids` includes only this project's preview owners;
+ * another app holding a port is allowed and is never a reason to kill it.
  */
 export function stopOutcome({ signalled, stubborn, after }) {
   const held = [...new Set([...stubborn, ...after.pids])];
   if (held.length > 0) {
-    return { ok: false, error: `port ${PREVIEW_PORT} is still held by pid(s) ${held.join(", ")}` };
-  }
-  if (after.unattributed) {
-    return {
-      ok: false,
-      error: `port ${PREVIEW_PORT} is held by a process this script cannot see`,
-    };
+    return { ok: false, error: `preview is still held by pid(s) ${held.join(", ")}` };
   }
   const message =
     signalled.length > 0
-      ? `stopped pid(s) ${signalled.join(", ")} — port ${PREVIEW_PORT} is free`
-      : `nothing was listening on ${PREVIEW_PORT}`;
+      ? `stopped this project's preview pid(s) ${signalled.join(", ")}`
+      : "no preview owned by this project was running";
   return { ok: true, message };
 }
 
@@ -160,6 +153,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function isAlive(pid) {
   try {
+    const dir = procDirectory(pid);
+    if (dir && /^State:\s+Z/m.test(readFileSync(`${dir}/status`, "utf8"))) return false;
     process.kill(pid, 0);
     return true;
   } catch (err) {
@@ -169,7 +164,8 @@ function isAlive(pid) {
 
 function pgidOf(pid) {
   try {
-    return parsePgid(readFileSync(`/proc/${pid}/stat`, "utf8"));
+    const dir = procDirectory(pid);
+    return dir ? namespaceId(readFileSync(`${dir}/status`, "utf8"), "NSpgid") : null;
   } catch {
     return null;
   }
@@ -196,11 +192,16 @@ function killPid(pid, signal) {
 
 function cmdlineOf(pid) {
   try {
-    return readFileSync(`/proc/${pid}/cmdline`, "utf8");
+    const dir = procDirectory(pid);
+    return dir ? readFileSync(`${dir}/cmdline`, "utf8") : "";
   } catch {
     // Usually a dead pid — the stale pidfile this corroboration exists for.
     return "";
   }
+}
+
+function belongsToProject(pid) {
+  return projectProcess(pid, ROOT, () => true);
 }
 
 function readPidFile() {
@@ -215,18 +216,18 @@ function pidsForSocketInodes(inodes) {
   const targets = new Set([...inodes].map((inode) => `socket:[${inode}]`));
   const pids = [];
   for (const entry of readdirSync("/proc")) {
-    const pid = parsePid(entry);
-    if (pid === null || pid === process.pid) continue;
+    const pid = localPid(entry);
+    if (pid === null || pid <= 1 || pid === process.pid) continue;
     let fds;
     try {
-      fds = readdirSync(`/proc/${pid}/fd`);
+      fds = readdirSync(`/proc/${entry}/fd`);
     } catch {
       // Exited mid-scan, or owned by another user.
       continue;
     }
     for (const fd of fds) {
       try {
-        if (targets.has(readlinkSync(`/proc/${pid}/fd/${fd}`))) {
+        if (targets.has(readlinkSync(`/proc/${entry}/fd/${fd}`))) {
           pids.push(pid);
           break;
         }
@@ -263,10 +264,17 @@ async function stop(announce = true) {
     portPids: portOwners().pids,
     pidFilePid: readPidFile(),
     cmdlineOf,
+    belongsToProject,
   });
   const { signalled, stubborn } = await terminatePids(owners, { kill: killPid, isAlive, sleep });
 
-  const outcome = stopOutcome({ signalled, stubborn, after: portOwners() });
+  const after = previewOwners({
+    portPids: portOwners().pids,
+    pidFilePid: readPidFile(),
+    cmdlineOf,
+    belongsToProject,
+  });
+  const outcome = stopOutcome({ signalled, stubborn, after: { pids: after } });
   if (!outcome.ok) {
     // Keep the pidfile: a survivor the port scan cannot attribute leaves it as
     // the only record a retry could use.
@@ -274,6 +282,7 @@ async function stop(announce = true) {
     return false;
   }
   rmSync(PID_FILE, { force: true });
+  rmSync(URL_FILE, { force: true });
   if (announce) console.log(`[preview] ${outcome.message}`);
   return true;
 }
@@ -282,21 +291,26 @@ async function waitForReady(failure) {
   const deadline = Date.now() + READY_TIMEOUT_MS;
   while (Date.now() < deadline && failure() === null) {
     try {
+      const url = previewUrlFromLog(readFileSync(LOG_FILE, "utf8"));
+      if (!url) {
+        await sleep(250);
+        continue;
+      }
       // Any HTTP response means the server is bound; a 404 is still ready.
-      await fetch(PREVIEW_URL, { signal: AbortSignal.timeout(2000) });
-      return true;
+      await fetch(url, { signal: AbortSignal.timeout(2000) });
+      return url;
     } catch {
       await sleep(250);
     }
   }
-  return false;
+  return null;
 }
 
 async function restart() {
   if (!(await stop())) return 1;
 
   mkdirSync(dirname(LOG_FILE), { recursive: true });
-  const log = openSync(LOG_FILE, "a");
+  const log = openSync(LOG_FILE, "w");
   const child = spawn("npm", ["run", "preview"], {
     cwd: ROOT,
     detached: true,
@@ -313,19 +327,18 @@ async function restart() {
     failure = `npm run preview exited early (${signal ?? `code ${code}`})`;
   });
 
-  if (!(await waitForReady(() => failure))) {
+  const url = await waitForReady(() => failure);
+  if (!url) {
     const secs = Math.round(READY_TIMEOUT_MS / 1000);
-    const why =
-      failure ??
-      `nothing answered on ${PREVIEW_URL} within ${secs}s — check that vite.config.ts ` +
-        `still sets preview.port ${PREVIEW_PORT}`;
+    const why = failure ?? `preview did not report a ready URL within ${secs}s`;
     console.error(`[preview] ${why} — see ${LOG_FILE}`);
     // A server that binds a few seconds later would serve a build the agent has
     // already been told to distrust.
     await stop(false);
     return 1;
   }
-  console.log(`[preview] serving ${PREVIEW_URL} (pid ${child.pid}, log ${LOG_FILE})`);
+  writeFileSync(URL_FILE, `${url}\n`);
+  console.log(`[preview] serving ${url} (pid ${child.pid}, log ${LOG_FILE})`);
   return 0;
 }
 

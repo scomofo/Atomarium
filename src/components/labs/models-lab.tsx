@@ -1,14 +1,39 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Bench } from "@/components/bench";
 import { MODELS } from "@/lib/course-data";
 
+function ModelPlate({ label, children }: { label: string; children: ReactNode }) {
+  const id = useId();
+  return (
+    <svg
+      viewBox="0 0 320 220"
+      className="h-auto w-full"
+      role="img"
+      aria-label={label}
+      style={{ "--model-sphere": `url(#${id}-sphere)` } as CSSProperties}
+    >
+      <defs>
+        <radialGradient id={`${id}-sphere`} cx="32%" cy="28%" r="75%">
+          <stop stopColor="var(--color-mist)" />
+          <stop offset="0.3" stopColor="var(--color-brass)" />
+          <stop offset="1" stopColor="var(--color-brass)" stopOpacity="0.4" />
+        </radialGradient>
+      </defs>
+      <rect width="320" height="220" fill="var(--color-chamber)" />
+      <g className="instrument-grid" pointerEvents="none">
+        <path d="M16 110H304 M160 16V204" strokeDasharray="2 6" />
+        <path d="M16 36V16H36 M284 16H304V36 M16 184V204H36 M284 204H304V184" />
+      </g>
+      {children}
+    </svg>
+  );
+}
+
 function DaltonArt() {
   return (
-    <svg viewBox="0 0 320 220" className="h-auto w-full" role="img" aria-label="A solid sphere">
-      <rect width="320" height="220" fill="var(--color-chamber)" />
-      <circle cx="160" cy="110" r="58" fill="var(--color-brass)" />
-      <circle cx="142" cy="92" r="16" fill="var(--color-mist)" opacity="0.18" />
-    </svg>
+    <ModelPlate label="A solid sphere">
+      <circle cx="160" cy="110" r="58" fill="var(--model-sphere)" />
+    </ModelPlate>
   );
 }
 
@@ -23,20 +48,18 @@ function ThomsonArt() {
     [210, 96],
   ];
   return (
-    <svg viewBox="0 0 320 220" className="h-auto w-full" role="img" aria-label="Positive sphere with embedded electrons">
-      <rect width="320" height="220" fill="var(--color-chamber)" />
-      <circle cx="160" cy="112" r="70" fill="var(--color-brass)" opacity="0.35" />
+    <ModelPlate label="Positive sphere with embedded electrons">
+      <circle cx="160" cy="112" r="70" fill="var(--model-sphere)" opacity="0.5" />
       {plums.map(([x, y]) => (
         <circle key={`${x}-${y}`} cx={x} cy={y} r="6" fill="var(--color-ion)" />
       ))}
-    </svg>
+    </ModelPlate>
   );
 }
 
 function RutherfordArt() {
   return (
-    <svg viewBox="0 0 320 220" className="h-auto w-full" role="img" aria-label="Tiny nucleus and a deflected alpha path">
-      <rect width="320" height="220" fill="var(--color-chamber)" />
+    <ModelPlate label="Tiny nucleus and a deflected alpha path">
       <circle cx="168" cy="112" r="78" fill="none" stroke="var(--color-line)" />
       <path
         d="M16 168 C 90 168, 120 140, 150 112"
@@ -50,21 +73,20 @@ function RutherfordArt() {
         stroke="var(--color-ion)"
         strokeWidth="1.6"
       />
-      <circle cx="168" cy="112" r="7" fill="var(--color-brass)" />
+      <circle cx="168" cy="112" r="7" fill="var(--model-sphere)" />
       <circle cx="100" cy="70" r="4" fill="var(--color-ion)" />
       <circle cx="230" cy="150" r="4" fill="var(--color-ion)" />
-    </svg>
+    </ModelPlate>
   );
 }
 
 function BohrArt() {
   return (
-    <svg viewBox="0 0 320 220" className="h-auto w-full" role="img" aria-label="Three quantized orbits around a nucleus">
-      <rect width="320" height="220" fill="var(--color-chamber)" />
+    <ModelPlate label="Three quantized orbits around a nucleus">
       <circle cx="150" cy="114" r="28" fill="none" stroke="var(--color-line)" />
       <circle cx="150" cy="114" r="52" fill="none" stroke="var(--color-line)" />
       <circle cx="150" cy="114" r="76" fill="none" stroke="var(--color-line)" />
-      <circle cx="150" cy="114" r="6" fill="var(--color-brass)" />
+      <circle cx="150" cy="114" r="6" fill="var(--model-sphere)" />
       <circle cx="202" cy="114" r="5" fill="var(--color-ion)" />
       <path
         d="M214 114 C 224 104, 232 124, 242 114 C 252 104, 260 124, 272 114"
@@ -72,7 +94,7 @@ function BohrArt() {
         stroke="var(--color-brass)"
         strokeWidth="1.5"
       />
-    </svg>
+    </ModelPlate>
   );
 }
 
@@ -87,9 +109,13 @@ function CloudArt({ mode }: { mode: "s" | "p" }) {
     const width = canvas.width;
     const height = canvas.height;
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--color-chamber").trim() || "#071014";
+    ctx.fillStyle =
+      getComputedStyle(document.documentElement).getPropertyValue("--color-chamber").trim() ||
+      "#071014";
     ctx.fillRect(0, 0, width, height);
-    const ion = getComputedStyle(document.documentElement).getPropertyValue("--color-ion").trim() || "#5ec4bc";
+    const ion =
+      getComputedStyle(document.documentElement).getPropertyValue("--color-ion").trim() ||
+      "#5ec4bc";
     let seed = mode === "s" ? 11 : 29;
     const rand = () => {
       seed = (seed * 16807 + 13) % 2147483647;
@@ -131,7 +157,11 @@ function CloudArt({ mode }: { mode: "s" | "p" }) {
       height={440}
       className="h-auto w-full"
       role="img"
-      aria-label={mode === "s" ? "A sketch of a 1s probability cloud" : "A sketch of a 2p orbital with two lobes"}
+      aria-label={
+        mode === "s"
+          ? "A sketch of a 1s probability cloud"
+          : "A sketch of a 2p orbital with two lobes"
+      }
     />
   );
 }
@@ -179,7 +209,10 @@ export function ModelsLab() {
             </button>
           ))}
         </div>
-        <div className="mt-4 overflow-hidden rounded-xl border border-line">
+        <div
+          key={model.id}
+          className="atom-particle mt-4 overflow-hidden rounded-xl border border-line"
+        >
           {model.id === "dalton" ? <DaltonArt /> : null}
           {model.id === "thomson" ? <ThomsonArt /> : null}
           {model.id === "rutherford" ? <RutherfordArt /> : null}
@@ -188,10 +221,20 @@ export function ModelsLab() {
         </div>
         {model.id === "quantum" ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" className="pill btn" aria-pressed={cloud === "s"} onClick={() => setCloud("s")}>
+            <button
+              type="button"
+              className="pill btn"
+              aria-pressed={cloud === "s"}
+              onClick={() => setCloud("s")}
+            >
               1s cloud
             </button>
-            <button type="button" className="pill btn" aria-pressed={cloud === "p"} onClick={() => setCloud("p")}>
+            <button
+              type="button"
+              className="pill btn"
+              aria-pressed={cloud === "p"}
+              onClick={() => setCloud("p")}
+            >
               2p lobes
             </button>
           </div>
@@ -202,7 +245,8 @@ export function ModelsLab() {
         )}
         {model.id === "quantum" ? (
           <p className="mt-3 text-xs text-fog">
-            A sketch of probability, denser where a measurement is more likely. Not a photograph, and not a track the electron follows.
+            A sketch of probability, denser where a measurement is more likely. Not a photograph,
+            and not a track the electron follows.
           </p>
         ) : null}
       </div>

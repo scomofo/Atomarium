@@ -51,6 +51,18 @@ export function FoilLab() {
     const cx = w * 0.48;
     const cy = h * 0.5;
     ctx.save();
+    ctx.strokeStyle = token("--color-line", "#2c3c3a");
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 24; x < w - 16; x += 32) {
+      ctx.moveTo(x, h - 12);
+      ctx.lineTo(x, h - 18);
+    }
+    for (let y = 24; y < h - 16; y += 32) {
+      ctx.moveTo(12, y);
+      ctx.lineTo(18, y);
+    }
+    ctx.stroke();
     ctx.strokeStyle = token("--color-brass", "#d9a441");
     ctx.globalAlpha = 0.35;
     ctx.lineWidth = 2;
@@ -61,7 +73,14 @@ export function FoilLab() {
     ctx.restore();
     ctx.beginPath();
     ctx.fillStyle = token("--color-brass", "#d9a441");
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 10;
     ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.fillStyle = token("--color-mist", "#e4efe9");
+    ctx.arc(cx - 2, cy - 2, 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = token("--color-fog", "#8b9c96");
     ctx.font = "12px IBM Plex Sans, sans-serif";
@@ -88,7 +107,14 @@ export function FoilLab() {
     const ion = token("--color-ion", "#5ec4bc");
     const next: ScatterBody[] = [];
     for (const body of bodiesRef.current) {
+      const previous = { x: body.x, y: body.y };
       stepScatter(body, cx, cy, dt, w, h);
+      ctx.beginPath();
+      ctx.strokeStyle = ion;
+      ctx.lineWidth = 1.2;
+      ctx.moveTo(previous.x, previous.y);
+      ctx.lineTo(body.x, body.y);
+      ctx.stroke();
       if (body.done) {
         const kind = classifyScatter(body);
         tallyRef.current[kind] += 1;
@@ -96,8 +122,11 @@ export function FoilLab() {
         next.push(body);
         ctx.beginPath();
         ctx.fillStyle = ion;
+        ctx.shadowColor = ion;
+        ctx.shadowBlur = 6;
         ctx.arc(body.x, body.y, 3.2, 0, Math.PI * 2);
         ctx.fill();
+        ctx.shadowBlur = 0;
       }
     }
     bodiesRef.current = next;

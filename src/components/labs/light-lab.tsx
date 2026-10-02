@@ -112,21 +112,37 @@ export function LightLab() {
                 </button>
               ))}
               <span
-                className="pointer-events-none absolute left-14 size-3 -translate-x-1/2 rounded-full bg-ion"
+                className="energy-electron pointer-events-none absolute left-14 size-3 -translate-x-1/2 rounded-full bg-ion"
                 style={{ bottom: `calc(${ladder[n - 1]?.bottom ?? 8}% + 1rem)` }}
                 aria-hidden="true"
               />
             </div>
           </div>
           <div className="flex flex-col gap-3">
-            <div
-              className="flex h-28 items-end rounded-xl border border-line px-4 py-3"
-              style={{ background: flash ?? "var(--color-chamber)" }}
-            >
-              <p
-                className={`text-xs tracking-widest uppercase ${flash ? "text-chamber" : "text-fog"}`}
-              >
-                Discharge tube
+            <div className="rounded-xl border border-line bg-chamber px-4 py-3">
+              <p className="text-xs tracking-widest text-fog uppercase">Discharge tube</p>
+              <svg viewBox="0 0 200 60" className="mt-2 h-16 w-full" aria-hidden="true">
+                <rect x="16" y="18" width="168" height="24" rx="12" className="discharge-tube" />
+                <rect
+                  x="25"
+                  y="22"
+                  width="150"
+                  height="16"
+                  rx="8"
+                  fill={flash ?? "var(--color-chamber)"}
+                />
+                <path
+                  d="M32 25H168"
+                  stroke="var(--color-mist)"
+                  opacity="0.3"
+                  strokeLinecap="round"
+                />
+                <path d="M16 30H6 M184 30H194" stroke="var(--color-stone)" strokeWidth="4" />
+              </svg>
+              <p className="text-xs text-fog">
+                {photon?.band === "visible" && !photon.absorption
+                  ? "Visible emission"
+                  : "No visible emission"}
               </p>
             </div>
             <div className="rounded-xl border border-line bg-chamber p-3">
@@ -190,8 +206,12 @@ export function LightLab() {
                 return (
                   <span
                     key={`${line.high}-${line.low}`}
-                    className="absolute top-1 bottom-5 w-0.5"
-                    style={{ left: `${nmPct(line.nm)}%`, background: color }}
+                    className="photon-line absolute top-1 bottom-5 w-0.5"
+                    style={{
+                      left: `${nmPct(line.nm)}%`,
+                      background: color,
+                      boxShadow: `0 0 6px ${color}`,
+                    }}
                     title={`${line.series} ${formatNm(line.nm)}`}
                   />
                 );

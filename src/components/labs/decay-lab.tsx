@@ -34,6 +34,7 @@ export function DecayLab() {
   const atomsRef = useRef<Atom[]>([]);
   const samplesRef = useRef<Sample[]>([{ t: 0, alive: ATOM_COUNT }]);
   const timeRef = useRef(0);
+  const fieldSizeRef = useRef({ w: 0, h: 0 });
   const runningRef = useRef(false);
   const isotopeRef = useRef<DecaySample>(DECAYS[3] ?? DECAYS[0]);
 
@@ -62,6 +63,14 @@ export function DecayLab() {
     const fh = field.clientHeight;
     if (fw < 10 || fh < 10) return;
     if (atomsRef.current.length === 0) atomsRef.current = makeAtoms(fw, fh);
+    const oldSize = fieldSizeRef.current;
+    if (oldSize.w && (oldSize.w !== fw || oldSize.h !== fh)) {
+      for (const atom of atomsRef.current) {
+        atom.x *= fw / oldSize.w;
+        atom.y *= fh / oldSize.h;
+      }
+    }
+    fieldSizeRef.current = { w: fw, h: fh };
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     if (field.width !== Math.floor(fw * dpr) || field.height !== Math.floor(fh * dpr)) {
       field.width = Math.floor(fw * dpr);
@@ -75,13 +84,22 @@ export function DecayLab() {
     }
     for (const atom of atomsRef.current) {
       fctx.beginPath();
+      fctx.strokeStyle = line;
+      fctx.lineWidth = 0.75;
+      fctx.arc(atom.x, atom.y, 9, 0, Math.PI * 2);
+      fctx.stroke();
+      fctx.beginPath();
       if (atom.dead) {
         fctx.strokeStyle = ion;
         fctx.lineWidth = 1.5;
         fctx.arc(atom.x, atom.y, 6, 0, Math.PI * 2);
         fctx.stroke();
       } else {
-        fctx.fillStyle = brass;
+        const bead = fctx.createRadialGradient(atom.x - 2, atom.y - 2, 0, atom.x, atom.y, 7);
+        bead.addColorStop(0, mist);
+        bead.addColorStop(0.35, brass);
+        bead.addColorStop(1, chamber);
+        fctx.fillStyle = bead;
         fctx.arc(atom.x, atom.y, 6, 0, Math.PI * 2);
         fctx.fill();
       }
@@ -107,6 +125,16 @@ export function DecayLab() {
     cctx.lineTo(pad, pad + plotH);
     cctx.lineTo(pad + plotW, pad + plotH);
     cctx.stroke();
+
+    cctx.strokeStyle = line;
+    cctx.lineWidth = 0.5;
+    for (const count of [36, 72, 108, 144]) {
+      const y = pad + plotH * (1 - count / ATOM_COUNT);
+      cctx.beginPath();
+      cctx.moveTo(pad, y);
+      cctx.lineTo(pad + plotW, y);
+      cctx.stroke();
+    }
 
     cctx.strokeStyle = fog;
     cctx.setLineDash([3, 4]);
@@ -163,6 +191,7 @@ export function DecayLab() {
     const width = field?.clientWidth || 0;
     const height = field?.clientHeight || 0;
     atomsRef.current = width > 10 && height > 10 ? makeAtoms(width, height) : [];
+    fieldSizeRef.current = { w: width, h: height };
     timeRef.current = 0;
     samplesRef.current = [{ t: 0, alive: ATOM_COUNT }];
     runningRef.current = false;
@@ -183,6 +212,10 @@ export function DecayLab() {
 
   useEffect(() => {
     reset(isotopeId);
+    const observer = new ResizeObserver(() => paint());
+    if (fieldRef.current) observer.observe(fieldRef.current);
+    if (chartRef.current) observer.observe(chartRef.current);
+    return () => observer.disconnect();
     // mount only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
