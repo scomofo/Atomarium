@@ -29,8 +29,7 @@
     overflow-x: hidden;
     font-family: var(--font-sans);
     background:
-      radial-gradient(1100px 420px at 70% -10%, #142228 0%, transparent 60%),
-      var(--color-chamber);
+      radial-gradient(1100px 420px at 70% -10%, #142228 0%, transparent 60%), var(--color-chamber);
   }
 
   h1,
@@ -134,27 +133,48 @@
   }
 }
 
-@keyframes orbit {
+.instrument-grid {
+  fill: none;
+  stroke: var(--color-line);
+  stroke-width: 0.75;
+  opacity: 0.55;
+}
+.shell-label {
+  fill: var(--color-fog);
+  font: 8px var(--font-sans);
+  letter-spacing: 0.08em;
+}
+.atom-particle {
+  animation: particle-reveal 220ms ease-out;
+}
+@keyframes particle-reveal {
   from {
-    transform: rotate(0deg);
+    opacity: 0.35;
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
   }
 }
-
-.orbit {
-  animation-name: orbit;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+.energy-electron {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-ion) 12%, transparent);
+  transition: bottom 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.discharge-tube {
+  stroke: var(--color-line);
+  stroke-width: 1.5;
+  fill: var(--color-raised);
+}
+.photon-line {
+  animation: particle-reveal 220ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .orbit {
+  .atom-particle,
+  .photon-line {
     animation: none !important;
   }
-
-  .btn {
+  .btn,
+  .energy-electron {
     transition: none;
   }
 }

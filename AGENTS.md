@@ -43,10 +43,9 @@ at `/workspace`. The user is in the Grok chat UI and can **only** chat and watch
 a **live preview** — no shell, no terminal, no `/workspace` — and you never see
 their machine.
 
-- A preview proxy auto-discovers whatever you serve on **`0.0.0.0:8080`** and
-  streams it into the live preview, which updates as you edit and save. It is
-  the user's **entire** view of your work: success = app **running on
-  `0.0.0.0:8080`**, **verified by you**, dev server **left up**.
+- Use the running app's actual reported URL for preview and verification.
+  Ports are configurable; no single port is required. Several apps may run
+  together, so never assume a listener belongs to this project.
 - Never treat the user as a local developer with Docker, ports or a terminal
   (§ "Communication rules"), and **speak in product terms** — ports, paths,
   `localhost`, "container", tool names and `curl` are noise to them.
@@ -69,7 +68,7 @@ Never default to a specific app — especially a game — for an ambiguous or
 numeric/one-character prompt, and never turn a question into an app unless
 asked. Unsure between (2) and (3)? "What should I build?" is the one allowed
 clarifying question, because it is answerable in chat; otherwise never block on
-what the user *can't* provide (ports, paths, shell output, screenshots).
+what the user _can't_ provide (ports, paths, shell output, screenshots).
 
 **Then decide auth and database — both are OFF by default.** This is a closed
 list, not a judgement call:
@@ -110,36 +109,37 @@ it with the same priority as this file.
 ### Where you are
 
 - **`/workspace`** is the project root; Linux container, **Node 22**.
-- The app **must listen on `0.0.0.0:8080`** — the preview proxy prefers a server
-  bound on all interfaces. Don't bind loopback-only; don't pick another port.
-- The sandbox may be stopped or replaced; **`/workspace/startup.sh`** is the
+- Development binds all interfaces and defaults to port 5173; built preview
+  defaults to 4173. Both select the next available port if occupied. Override
+  with `DEV_PORT`, `PREVIEW_PORT`, `PORT`, or Vite's `--port` argument.
+  Verify the actual URL reported by the server, not an assumed port.
+- The sandbox may be stopped or replaced; **the repository's `startup.sh`** is the
   restart contract you own.
 
-### `/workspace/startup.sh` (required — you maintain this)
+### `startup.sh` (you maintain this)
 
-After a hibernate/revive the platform runs **`/workspace/startup.sh`** to bring
+After a hibernate/revive the platform runs **the repository's `startup.sh`** to bring
 back the dev server and anything else the preview needs. **Rules
 (non-negotiable):**
 
-1. **Path is fixed:** always `/workspace/startup.sh` — never rename, move or
-   substitute another entrypoint, and never delete it when cleaning up or
-   re-scaffolding.
+1. Keep `startup.sh` at the repository root; it must resolve its own directory
+   so each app can start independently of the caller's working directory.
 2. **You write it** — the workspace does not ship it. Create it the same turn
    you first bring the preview up; don't claim the app runs without it.
 3. **Keep it in sync:** start command, port, env or workers change → update it
    the same turn.
-4. **Idempotent and non-blocking:** probe `http://127.0.0.1:8080/`, exit 0 if
-   healthy, start only what is down, and background it so the script returns
-   fast.
-5. **Bind the preview** on **`0.0.0.0:8080`**, and keep **no secrets** that
-   shouldn't live in the workspace snapshot.
+4. **Idempotent and non-blocking:** reuse only a verified dev process belonging
+   to this repository. Another app answering a port is not this app. Start
+   missing processes in the background so the script returns quickly.
+5. Honor configurable ports and available-port fallback. Never stop another
+   app to free a port. Keep no secrets in the workspace snapshot.
 6. **Start the app with `npm run dev` — never `vite` / `npx vite` directly**,
    here or during a turn. Only the npm scripts run Vite through
    `scripts/with-app-env.mjs`, which puts `.grok/app-env.json`
    (`VITE_AUTH_ENABLED`) into the environment.
 
 Starting the dev server during a turn: write/update `startup.sh` first, then run
-`sh /workspace/startup.sh`, so revive and live work stay identical (worked
+`sh ./startup.sh`, so revive and live work stay identical (worked
 example in `.grok/references/hibernate-revive.md`).
 
 ### What is already here
@@ -150,7 +150,7 @@ missing. Postgres and Better Auth are pre-wired in `src/lib`, **opt-in per app**
 (§0.5). Playwright + Chromium are baked for QA.
 
 - **Don't recreate `vite.config.ts` / `tsconfig.json`** or import a vendored
-  `vite-tanstack-config` preset. Editing? Keep both port contracts, the
+  `vite-tanstack-config` preset. Editing? Keep configurable port settings, the
   build/preview-gated nitro plugin and `grokPwaPlugin()`
   (`.grok/references/deploy-target.md`).
 - **Never delete or overwrite `public/__grok/`, `server/`, `scripts/grok-pwa-*`**
@@ -206,14 +206,14 @@ don't scaffold from stale priors — and keep each contract:
    settings**, not code changes: refuse, say where to change it, and carry on
    editing the app itself.
 5. **Auth routes only when §0.5 says accounts** — then add `src/routes/login.tsx`
-   + `src/routes/api/auth/$.ts` from the `auth` skill. Otherwise don't create
-   them, don't import `@/lib/db`, don't add migrations. **Never create
-   `src/routes/auth/popup.tsx`**: the template Vite plugin already serves
-   `/auth/popup` (`popup.server.ts`), and a React page there shows the app
-   inside the popup. Viewers opened from Grok are gate-signed-in with zero
-   clicks — **never render "Sign in / Re-auth with Grok" buttons** outside the
-   `app-data` skill's `login` error state. Wiring:
-   `.grok/references/data-and-auth.md`.
+   - `src/routes/api/auth/$.ts` from the `auth` skill. Otherwise don't create
+     them, don't import `@/lib/db`, don't add migrations. **Never create
+     `src/routes/auth/popup.tsx`**: the template Vite plugin already serves
+     `/auth/popup` (`popup.server.ts`), and a React page there shows the app
+     inside the popup. Viewers opened from Grok are gate-signed-in with zero
+     clicks — **never render "Sign in / Re-auth with Grok" buttons** outside the
+     `app-data` skill's `login` error state. Wiring:
+     `.grok/references/data-and-auth.md`.
 
 ---
 
@@ -254,10 +254,10 @@ changes. Revive, reboot-wipe and the `startup.sh` worked example:
    starting it here is what keeps it off the answer's critical path.
 3. Scaffold TanStack Start + implement for real — working UI + state, not
    wireframes.
-4. Ensure **`/workspace/startup.sh`** starts the app via `npm run dev` (edit if
-   needed), then run `sh /workspace/startup.sh` so the dev server is up in the
+4. Ensure **the repository's `startup.sh`** starts the app via `npm run dev` (edit if
+   needed), then run `sh ./startup.sh` so the dev server is up in the
    background; leave it up. Never start Vite directly — that bypasses the env
-   wrapper the build and preview use (§ `/workspace/startup.sh`).
+   wrapper the build and preview use (§ `startup.sh`).
 5. **As soon as the source is stable, background the build gates.** Kick off
    `npm run build` and `npm run typecheck` **in parallel, in background
    terminals**, and do step 7 against the dev server while they run — the
@@ -275,34 +275,35 @@ changes. Revive, reboot-wipe and the `startup.sh` worked example:
    when it wakes you — publish again if they already did, or the live app keeps
    the placeholder card. Meanwhile it keeps `/workspace/.grok/og-pending` fresh
    (stale after 10 minutes), so a mid-task brand warning is no cue to redo its
-   work. Unless your own prompt says you *are* the pass — then make the
+   work. Unless your own prompt says you _are_ the pass — then make the
    assets.
 7. **Verify it actually RENDERS — mandatory, before you say it's done.** A 200
    from curl is NOT enough; blank/white pages are the #1 failure. Run
-   `node scripts/browser-smoke.mjs` — ONE run audits **desktop and mobile** and
-   prints a JSON verdict. Confirm BOTH:
+   `node scripts/browser-smoke.mjs <actual-server-url>` — desktop is the required
+   target and the script prints a JSON verdict. Mobile QA is optional and only
+   enabled with `BROWSER_SMOKE_MOBILE=true`. Confirm both:
    - the app root has **visible content** (real text/elements on screen) —
-     **visually inspect both screenshots in one batched read, every time**
+     **visually inspect the desktop screenshot**
      (the JSON can't catch white-on-white text, overlap or broken spacing), and
    - the **browser console has no uncaught errors** (runtime error, failed
      module/asset load, hydration mismatch).
-   If blank or any console error, fix and re-check.
-   **Anything interactive** (click, type, keys, state) — use the preinstalled
-   **`agent-browser`** CLI, not a hand-written Playwright script; read
-   `.grok/references/browser-qa.md` first.
-   **Games with movement:** a still frame is not enough — confirm **A = left /
-   D = right** while moving forward (`controls` §5c). Flip one steer/roll sign
-   if inverted; retest.
+     If blank or any console error, fix and re-check.
+     **Anything interactive** (click, type, keys, state) — use the preinstalled
+     **`agent-browser`** CLI, not a hand-written Playwright script; read
+     `.grok/references/browser-qa.md` first.
+     **Games with movement:** a still frame is not enough — confirm **A = left /
+     D = right** while moving forward (`controls` §5c). Flip one steer/roll sign
+     if inverted; retest.
 8. **Verify the PRODUCTION build, not just dev.** Dev (Vite) can render while
    the deployed Vercel build is blank. Once `npm run build` (step 5) succeeds,
-   serve the built output with `npm run preview:restart` (loopback
-   `127.0.0.1:8081`) and re-run the smoke script with the dev verdict as
+   serve the built output with `npm run preview:restart` and use its reported
+   URL (also saved in `.grok/preview.url`). Re-run smoke with the dev verdict as
    `--baseline`. Watch for
    `Failed to load module script … MIME type "text/html"`.
    **If you edited source after kicking off the build, re-run `npm run build`
-   first, then `npm run preview:restart`** — it frees `:8081` first, so you
-   never smoke the previous build's output. A clean, non-diverging JSON is
-   enough. Mobile (~390×844) is already covered by the combined smoke pass.
+   first, then `npm run preview:restart`** — it stops only this project's
+   preview, so you verify the current build without interrupting other apps.
+   A clean, non-diverging desktop verdict is enough.
 9. Give a brief, **user-facing** summary — what you built and what to try in the
    preview. **Never** "please open localhost and tell me if it works" or "run this
    on your machine."
@@ -310,13 +311,13 @@ changes. Revive, reboot-wipe and the `startup.sh` worked example:
 ### Browser QA (the user is not your QA)
 
 You drive the browser yourself, in the sandbox, against
-`http://127.0.0.1:8080`. **Always write QA screenshots under
+the current server's reported URL. **Always write QA screenshots under
 `/workspace/screenshots/`, never `/tmp`**. Interactive checks: step 7.
 
 ### Communication rules (avoid confusing the user)
 
 **Never** ask them to open `localhost`, a host port, Docker or any URL that only
-works on *your* network, or to run commands, check a terminal or paste
+works on _your_ network, or to run commands, check a terminal or paste
 logs/screenshots for QA. Never explain sandbox plumbing (paths, ports, the
 preview relay, tool names) unless asked, never imply they can reach
 `/workspace` or your shell, and never close with "let me know if it works"
@@ -331,8 +332,9 @@ in-browser say so and ship the best web-only build.
   render check on **dev and on the built output** shows content with a clean
   console.
 - Cohesive UI per **`design-ui`** (tokens, no-slop rules); no broken imports.
-- Usable on mobile as well as a laptop viewport (390×844: no horizontal
-  overflow, touch-friendly).
+- Desktop is the primary target. Mobile support and mobile-specific QA are
+  not required unless the user requests them. Preserve existing responsive
+  behavior when it costs no additional scope.
 - A `BRAND WARNING` from `browser-smoke.mjs` (missing share card) is **not
   done**, like a failing build or typecheck — but silent while the brand pass
   runs.
@@ -347,5 +349,5 @@ in-browser say so and ship the best web-only build.
 auth/db: OFF by default — sign-in, @/lib/db or migrations ONLY on an accounts / login /
          per-user / cross-device-save ask (§0.5); otherwise localStorage
 never:   build an app for a greeting/number/question; invent imagine_* calls;
-         ask the user to run commands; delete or abandon /workspace/startup.sh
+         ask the user to run commands; delete or abandon startup.sh
 ```

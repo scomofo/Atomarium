@@ -10,6 +10,7 @@ import { nitro } from "nitro/vite";
 import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
 // @ts-expect-error JS plugin alongside the TS vite config
 import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
+import { devPort, previewPort } from "./scripts/local-ports.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
@@ -85,7 +86,9 @@ function authPopupPlugin(): Plugin {
           }
 
           const host = String(
-            req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost:8080",
+            req.headers["x-forwarded-host"] ??
+              req.headers.host ??
+              `localhost:${req.socket.localPort ?? devPort()}`,
           );
           const proto = String(
             req.headers["x-forwarded-proto"] ??
@@ -142,19 +145,19 @@ function authPopupPlugin(): Plugin {
   };
 }
 
-// `0.0.0.0:8080` is the live-preview contract — don't change host/port.
+// Ports are configurable; an occupied port falls forward to the next available one.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
 export default defineConfig(({ command, isPreview }) => ({
   server: {
     host: "0.0.0.0",
-    port: 8080,
-    strictPort: true,
+    port: devPort(),
+    strictPort: false,
   },
   preview: {
     host: "127.0.0.1",
-    port: 8081,
-    strictPort: true,
+    port: previewPort(),
+    strictPort: false,
   },
   resolve: { tsconfigPaths: true },
   plugins: [
