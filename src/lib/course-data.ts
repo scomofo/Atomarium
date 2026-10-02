@@ -1,4 +1,4 @@
-export type StationId = "build" | "models" | "light" | "decay" | "foil" | "check";
+export type StationId = "build" | "models" | "light" | "decay" | "foil" | "trends" | "check";
 
 export type Station = {
   id: StationId;
@@ -39,8 +39,14 @@ export const STATIONS: Station[] = [
     summary: "Fire helium nuclei at gold and watch the empty atom.",
   },
   {
-    id: "check",
+    id: "trends",
     index: "06",
+    title: "Periodic trends",
+    summary: "Size and pull, twenty elements at a glance.",
+  },
+  {
+    id: "check",
+    index: "07",
     title: "Check yourself",
     summary: "Eight questions from the benches. The reason matters more than the score.",
   },
@@ -85,6 +91,38 @@ export const PRESETS: Preset[] = [
   { label: "Sodium", p: 11, n: 12, e: 11 },
   { label: "Chlorine", p: 17, n: 18, e: 17 },
   { label: "Calcium", p: 20, n: 20, e: 20 },
+];
+
+export type TrendPoint = {
+  z: number;
+  symbol: string;
+  /** Empirical atomic radius in picometres. */
+  radiusPm: number;
+  /** Pauling electronegativity. Noble gases have no Pauling value: null. */
+  electronegativity: number | null;
+};
+
+export const TRENDS: TrendPoint[] = [
+  { z: 1, symbol: "H", radiusPm: 25, electronegativity: 2.2 },
+  { z: 2, symbol: "He", radiusPm: 31, electronegativity: null },
+  { z: 3, symbol: "Li", radiusPm: 145, electronegativity: 0.98 },
+  { z: 4, symbol: "Be", radiusPm: 105, electronegativity: 1.57 },
+  { z: 5, symbol: "B", radiusPm: 85, electronegativity: 2.04 },
+  { z: 6, symbol: "C", radiusPm: 70, electronegativity: 2.55 },
+  { z: 7, symbol: "N", radiusPm: 65, electronegativity: 3.04 },
+  { z: 8, symbol: "O", radiusPm: 60, electronegativity: 3.44 },
+  { z: 9, symbol: "F", radiusPm: 50, electronegativity: 3.98 },
+  { z: 10, symbol: "Ne", radiusPm: 38, electronegativity: null },
+  { z: 11, symbol: "Na", radiusPm: 180, electronegativity: 0.93 },
+  { z: 12, symbol: "Mg", radiusPm: 150, electronegativity: 1.31 },
+  { z: 13, symbol: "Al", radiusPm: 125, electronegativity: 1.61 },
+  { z: 14, symbol: "Si", radiusPm: 110, electronegativity: 1.9 },
+  { z: 15, symbol: "P", radiusPm: 100, electronegativity: 2.19 },
+  { z: 16, symbol: "S", radiusPm: 100, electronegativity: 2.58 },
+  { z: 17, symbol: "Cl", radiusPm: 100, electronegativity: 3.16 },
+  { z: 18, symbol: "Ar", radiusPm: 71, electronegativity: null },
+  { z: 19, symbol: "K", radiusPm: 220, electronegativity: 0.82 },
+  { z: 20, symbol: "Ca", radiusPm: 180, electronegativity: 1.0 },
 ];
 
 export type AtomModel = {

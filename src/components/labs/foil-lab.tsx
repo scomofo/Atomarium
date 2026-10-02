@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bench } from "@/components/bench";
 import { classifyScatter, stepScatter, type ScatterBody, type ScatterClass } from "@/lib/physics";
 
@@ -30,24 +30,7 @@ export function FoilLab() {
   const [tally, setTally] = useState<Tally>({ ...EMPTY });
   const [fired, setFired] = useState(0);
 
-  function syncSize() {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    sizeRef.current = { w, h };
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.floor(w * dpr);
-    canvas.height = Math.floor(h * dpr);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = token("--color-chamber", "#071014");
-    ctx.fillRect(0, 0, w, h);
-    drawStatic(ctx, w, h);
-  }
-
-  function drawStatic(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const drawStatic = useCallback((ctx: CanvasRenderingContext2D, w: number, h: number) => {
     const cx = w * 0.48;
     const cy = h * 0.5;
     ctx.save();
@@ -86,7 +69,24 @@ export function FoilLab() {
     ctx.font = "12px IBM Plex Sans, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("gold", cx, h * 0.1);
-  }
+  }, []);
+
+  const syncSize = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    sizeRef.current = { w, h };
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = token("--color-chamber", "#071014");
+    ctx.fillRect(0, 0, w, h);
+    drawStatic(ctx, w, h);
+  }, [drawStatic]);
 
   function publish() {
     setTally({ ...tallyRef.current });
@@ -209,7 +209,7 @@ export function FoilLab() {
       observer.disconnect();
       if (loopRef.current) cancelAnimationFrame(loopRef.current);
     };
-  }, []);
+  }, [syncSize]);
 
   return (
     <Bench

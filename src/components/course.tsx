@@ -7,6 +7,7 @@ import { DecayLab } from "@/components/labs/decay-lab";
 import { FoilLab } from "@/components/labs/foil-lab";
 import { LightLab } from "@/components/labs/light-lab";
 import { ModelsLab } from "@/components/labs/models-lab";
+import { TrendsLab } from "@/components/labs/trends-lab";
 import { STATIONS } from "@/lib/course-data";
 import { useCourse } from "@/lib/store";
 
@@ -54,8 +55,9 @@ function Syllabus() {
             The atom, <span className="text-brass italic">in your hands.</span>
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-fog sm:text-lg">
-            Six benches. You assemble a nucleus, retire five historical models, pull colors out of
-            hydrogen, watch a half-life refuse to be a clock, and fire alpha particles at gold.
+            Seven benches. You assemble a nucleus, retire five historical models, pull colors out
+            of hydrogen, watch a half-life refuse to be a clock, fire alpha particles at gold,
+            and read two trends across the table.
           </p>
           {attempts > 0 ? (
             <p className="mt-4 text-sm text-mist tabular-nums">
@@ -125,6 +127,7 @@ export function Course() {
         {view === "light" ? <LightLab /> : null}
         {view === "decay" ? <DecayLab /> : null}
         {view === "foil" ? <FoilLab /> : null}
+        {view === "trends" ? <TrendsLab /> : null}
         {view === "check" ? <CheckLab /> : null}
       </main>
     </div>

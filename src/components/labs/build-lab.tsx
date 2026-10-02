@@ -143,6 +143,13 @@ export function BuildLab() {
             ? stabilityLine(protons, neutrons)
             : "Add protons to choose an element from hydrogen through calcium."}
         </p>
+        {protons === 20 ? (
+          <p className="mt-2 text-xs leading-relaxed text-fog">
+            A note on the list: calcium-48 is technically radioactive, with a half-life around
+            6×10¹⁹ years — vastly longer than the age of the universe — so it is left out of the
+            stable set above.
+          </p>
+        ) : null}
 
         <div className="mt-4 flex flex-wrap gap-2">
           {PRESETS.map((preset) => (
