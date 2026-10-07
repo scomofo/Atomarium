@@ -7,7 +7,7 @@ test("ports default independently and allow per-app overrides", () => {
   assert.equal(previewPort({}), 4173);
   assert.equal(devPort({ PORT: "6200" }), 6200);
   assert.equal(previewPort({ PORT: "6200" }), 6200);
-  assert.equal(devPort({ DEV_PORT: "6201", PORT: "6200" }), 6201);
+  assert.equal(devPort({ DEV_PORT: "6201", PORT: "6200" }), 6200);
   assert.equal(previewPort({ PREVIEW_PORT: "6202", PORT: "6200" }), 6202);
 });
 

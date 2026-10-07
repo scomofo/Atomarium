@@ -1,4 +1,5 @@
-export const DEFAULT_DEV_PORT = 5173;
+import { DEFAULT_DEV_PORT, numericPort } from "./dev-ports.mjs";
+export { DEFAULT_DEV_PORT } from "./dev-ports.mjs";
 export const DEFAULT_PREVIEW_PORT = 4173;
 
 export function configuredPort(value, fallback) {
@@ -11,7 +12,7 @@ export function configuredPort(value, fallback) {
 }
 
 export function devPort(env = process.env) {
-  return configuredPort(env.DEV_PORT ?? env.PORT, DEFAULT_DEV_PORT);
+  return numericPort(env.PORT) ?? numericPort(env.DEV_PORT) ?? DEFAULT_DEV_PORT;
 }
 
 export function previewPort(env = process.env) {

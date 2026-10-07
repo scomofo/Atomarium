@@ -19,6 +19,7 @@
  * Vite picks the values up because `loadEnv` prefix-matches entries already in
  * `process.env`, which is why the merge has to happen before Vite starts.
  */
+import { resolveDevPort } from "./dev-ports.mjs";
 import { spawn } from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
 import { constants as osConstants } from "node:os";
@@ -104,13 +105,30 @@ export function isMainModule(moduleUrl) {
   }
 }
 
-function main(argv) {
+async function main(argv) {
   const [command, ...args] = argv;
   if (!command) {
     console.error("usage: node scripts/with-app-env.mjs <command> [args…]");
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
+  if (command === "vite" && ["dev", "serve"].includes(args[0])) {
+    const selected = await resolveDevPort({ root: projectRoot(), args: args.slice(1), env });
+    if (selected.reuse) {
+      console.log(`[dev] reusing http://127.0.0.1:${selected.port}/`);
+      return;
+    }
+    args.splice(
+      0,
+      args.length,
+      "dev",
+      ...selected.args,
+      "--port",
+      String(selected.port),
+      "--strictPort",
+    );
+    env.PORT = String(selected.port);
+  }
   const child = spawn(command, args, {
     stdio: "inherit",
     env,
@@ -132,5 +150,8 @@ function main(argv) {
 }
 
 if (isMainModule(import.meta.url)) {
-  main(process.argv.slice(2));
+  main(process.argv.slice(2)).catch((error) => {
+    console.error(`[with-app-env] ${error.message}`);
+    process.exitCode = 1;
+  });
 }

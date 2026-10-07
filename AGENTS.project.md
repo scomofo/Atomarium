@@ -14,3 +14,7 @@ where they conflict with the user's instructions.
 - Start through the existing npm environment wrapper. Startup and preview
   helpers must identify this repository's own processes; never kill another app
   or assume a port responding means this app is running.
+
+- `PORT` takes precedence over `DEV_PORT` and CLI port flags. Explicit port
+  overrides fail clearly if busy; available-port scanning applies only when
+  no override is set. See `docs/dev-launcher.md` for the shared launch contract.

@@ -3,3 +3,8 @@ node_modules/
 .github_repo
 .env
 .env.*
+.grok/dev-port
+.grok/dev-token
+.grok/dev-port.*.tmp
+.grok/dev.pid
+.grok/dev.log
