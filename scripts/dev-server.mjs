@@ -1,44 +1,48 @@
 import { spawn } from "node:child_process";
-import { closeSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, openSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { projectProcess } from "./local-processes.mjs";
+import { resolveDevPort } from "./dev-ports.mjs";
+import { isMainModule } from "./with-app-env.mjs";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const pidFile = join(root, ".grok/dev.pid");
-mkdirSync(join(root, ".grok"), { recursive: true });
-let pid;
-try {
-  pid = Number(readFileSync(pidFile, "utf8").trim());
-} catch {
-  /* No previous dev process. */
-}
-const isDev = (cmd) => /\brun\s+dev(?:\s|$)/.test(cmd.replaceAll("\0", " "));
-// npm briefly sets its process title to just "npm" while initializing. Give a
-// live process in this project time to reveal its script before starting another.
-let reuse = false;
-if (Number.isInteger(pid) && pid > 1) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    if (projectProcess(pid, root, isDev)) {
-      reuse = true;
-      break;
-    }
-    if (!projectProcess(pid, root, () => true)) break;
-    await new Promise((resolve) => setTimeout(resolve, 20));
+export async function launchDev(root, args = [], env = process.env) {
+  const selected = await resolveDevPort({ root, args, env });
+  if (selected.reuse) return selected;
+  const log = openSync(join(root, ".grok/dev.log"), "a");
+  try {
+    // The existing environment wrapper handles npm.cmd on Windows as well as
+    // vite.cmd inside npm run dev. No /proc inspection is needed for reuse.
+    const child = spawn(
+      process.execPath,
+      [join(root, "scripts/with-app-env.mjs"), "npm", "run", "dev", "--", ...selected.args],
+      {
+        cwd: root,
+        env: { ...env, PORT: String(selected.port) },
+        detached: true,
+        stdio: ["ignore", log, log],
+      },
+    );
+    await new Promise((resolve, reject) => {
+      child.once("spawn", resolve);
+      child.once("error", reject);
+    });
+    writeFileSync(join(root, ".grok/dev.pid"), `${child.pid}\n`);
+    child.unref();
+    return selected;
+  } finally {
+    closeSync(log);
   }
 }
-if (!reuse) {
-  const log = openSync(join(root, ".grok/dev.log"), "w");
-  const child = spawn("npm", ["run", "dev", "--", ...process.argv.slice(2)], {
-    cwd: root,
-    detached: true,
-    stdio: ["ignore", log, log],
-  });
-  await new Promise((resolve, reject) => {
-    child.once("spawn", resolve);
-    child.once("error", reject);
-  });
-  writeFileSync(pidFile, `${child.pid}\n`);
-  closeSync(log);
-  child.unref();
+
+if (isMainModule(import.meta.url)) {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+  try {
+    const selected = await launchDev(root, process.argv.slice(2));
+    console.log(
+      `[dev] ${selected.reuse ? "reusing" : "starting"} http://127.0.0.1:${selected.port}/`,
+    );
+  } catch (error) {
+    console.error(`[dev] ${error.message}`);
+    process.exitCode = 1;
+  }
 }
